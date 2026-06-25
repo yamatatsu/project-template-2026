@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+build/
+*.tsbuildinfo
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env
+.env
+.env.*
+!.env.example
+
+# editor / OS
+.DS_Store
+.idea/
+*.local
+
+# vite
+apps/frontend/dist/
