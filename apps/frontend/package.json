@@ -17,6 +17,7 @@
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/geist": "^5.2.9",
     "@tanstack/react-query": "^5.101.1",
+    "@tanstack/react-router": "^1.170.16",
     "backend": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

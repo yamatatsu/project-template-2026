@@ -121,8 +121,7 @@ bootstrap the runtime layer.
 Most bundlers expose a `public/` folder at the project root. Files here are
 served as-is, without bundling or hashing.
 
-- Vite, Next.js, Nuxt: `public/` at the project root.
-- Astro: `public/` at the project root (path is fixed and cannot be changed).
+- Vite: `public/` at the project root.
 
 `public/` is not part of FSD. It does not collide with FSD layers and does
 not need to live under `src/`. Use it for files that must be served at fixed

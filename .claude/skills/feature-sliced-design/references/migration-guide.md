@@ -241,10 +241,10 @@ Reorganize the Shared layer too:
 
 ## Optional steps
 
-### Step 6. Form entities/features from Redux slices used on several pages
+### Step 6. Form entities/features from global state slices used on several pages
 
-Reused Redux slices typically describe business concepts (products, users)
-or user actions (comments, likes):
+Reused global state slices typically describe business concepts (products,
+users) or user actions (comments, likes):
 
 - Business entities → **Entities layer**, one entity per folder.
 - User actions → **Features layer**.

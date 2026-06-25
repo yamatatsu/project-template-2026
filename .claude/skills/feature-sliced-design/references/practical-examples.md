@@ -2,7 +2,7 @@
 
 Concrete code patterns for common scenarios within FSD structure. Covers
 authentication, type definitions, API request handling, and state management
-integration (Redux, TanStack Query / React Query).
+integration (TanStack Query / React Query).
 
 ## Authentication
 
@@ -197,107 +197,6 @@ Do not put domain-specific request functions in `shared/api/`. Shared is
 infrastructure; the moment a function knows about a specific resource and
 its domain rules, it belongs in `entities/` or higher.
 
-## State Management: Redux
-
-### Where a Redux slice belongs
-
-The `from-custom` migration guide draws a clean line: **business
-entities** (the things your app works with, like `todo`, `product`, `user`)
-go in the Entities layer; **user actions** (`add-todo`, `toggle-todo`,
-`like-post`) go in Features.
-
-In v2.1, also remember the pages-first rule: if the slice is used by a
-single page, keep it in that page's `model/` segment until reuse appears.
-
-### Business-entity slice in entities
-
-```typescript
-// entities/todo/model/todo.ts
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { apiClient } from "@/shared/api/client";
-
-interface Todo { id: string; title: string; completed: boolean }
-interface TodoState { items: Todo[]; loading: boolean }
-
-export const fetchTodos = createAsyncThunk("todos/fetch", async () =>
-  (await apiClient.get<Todo[]>("/todos")).data,
-);
-
-const todoSlice = createSlice({
-  name: "todos",
-  initialState: { items: [], loading: false } as TodoState,
-  reducers: {
-    setCompleted: (state, { payload }: { payload: { id: string; completed: boolean } }) => {
-      const todo = state.items.find((t) => t.id === payload.id);
-      if (todo) todo.completed = payload.completed;
-    },
-  },
-  extraReducers: (builder) => {
-    builder
-      .addCase(fetchTodos.pending, (state) => { state.loading = true; })
-      .addCase(fetchTodos.fulfilled, (state, action) => {
-        state.items = action.payload;
-        state.loading = false;
-      });
-  },
-});
-
-export const { setCompleted } = todoSlice.actions;
-export const selectTodos = (state: RootState) => state.todos.items;
-export const todoReducer = todoSlice.reducer;
-```
-
-The slice's public API re-exports what consumers need:
-
-```typescript
-// entities/todo/index.ts
-export { todoReducer, selectTodos, setCompleted, fetchTodos } from "./model/todo";
-```
-
-**Key:** The entire Redux slice (reducer + selectors + thunks) lives in a
-single domain-named file, not split across `reducers.ts`, `selectors.ts`,
-`thunks.ts`. That technical-role split reduces cohesion and is an
-anti-pattern in FSD.
-
-### User-action slice in features
-
-A user action that orchestrates the entity exposes a hook through its
-public API and consumes the entity's reducer:
-
-```typescript
-// features/toggle-todo/model/use-toggle-todo.ts
-import { useDispatch } from "react-redux";
-import { setCompleted } from "@/entities/todo";
-
-export const useToggleTodo = () => {
-  const dispatch = useDispatch();
-  return (id: string, current: boolean) =>
-    dispatch(setCompleted({ id, completed: !current }));
-};
-```
-
-### Registering slices in app
-
-```typescript
-// app/providers/store.ts
-import { configureStore } from "@reduxjs/toolkit";
-import { todoReducer } from "@/entities/todo";
-import { userReducer } from "@/entities/user";
-
-export const store = configureStore({
-  reducer: {
-    todos: todoReducer,
-    user: userReducer,
-  },
-});
-
-export type RootState = ReturnType<typeof store.getState>;
-```
-
-The store imports each slice's reducer through its public API
-(`index.ts`), never reaching into `model/` directly (Rule 4-2). Do not
-let individual slices create their own stores.
-
 ## State Management: TanStack Query (React Query)
 
 Guidance applies to `@tanstack/react-query` v5 (formerly React Query). The
@@ -332,7 +231,10 @@ shared/api/example/
 
 **Option 3: Per entity in `entities/<entity>/api/`** when each request
 corresponds to a single entity, and the project already has an Entities
-layer. When entities reference each other, see
+layer. The official FSD React Query guide treats this per-entity placement
+(`{entity}.query.ts` alongside `get-{entity}.ts`, etc.) as its primary
+structure; under this skill's pages-first stance, prefer the shared options
+above until a real entity exists. When entities reference each other, see
 `references/cross-import-patterns.md` for `@x` notation as a last resort.
 
 ### Where to store mutations
@@ -366,7 +268,7 @@ without rewriting them:
 
 ```typescript
 // src/shared/api/post/post.queries.ts
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, keepPreviousData } from "@tanstack/react-query";
 import { getPosts, getDetailPost, type DetailPostQuery } from "./get-posts";
 
 export const POST_QUERIES = {
@@ -375,7 +277,7 @@ export const POST_QUERIES = {
   list: (page: number, limit: number) => queryOptions({
     queryKey: [...POST_QUERIES.lists(), page, limit],
     queryFn: () => getPosts(page, limit),
-    placeholderData: (prev) => prev,
+    placeholderData: keepPreviousData,
   }),
   detail: (query?: DetailPostQuery) => queryOptions({
     queryKey: [...POST_QUERIES.all(), "detail", query?.id],
@@ -385,7 +287,8 @@ export const POST_QUERIES = {
 ```
 
 Consume with `useQuery(POST_QUERIES.detail({ id }))`. For pagination,
-`placeholderData: prev => prev` prevents UI flicker when navigating pages.
+`placeholderData: keepPreviousData` (the v5 helper) prevents UI flicker when
+navigating pages.
 
 **Benefits of a query factory:** all API requests for a domain live in one
 place (readability), every key and query function is reachable through the
@@ -468,19 +371,29 @@ export const SaveIndicator = () => {
 };
 ```
 
-### QueryProvider in the app layer
+### QueryClient and QueryProvider
+
+Split the two concerns across layers: the `QueryClient` instance is
+infrastructure, so it lives in `shared/api/`; the provider component is
+composition, so it lives in `app/providers/`.
 
 ```tsx
-// src/app/providers/query-provider.tsx
-import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+// src/shared/api/query-client.ts
+import { QueryClient, MutationCache, QueryCache } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: (e) => toast.error(e.message) }),
   mutationCache: new MutationCache({ onError: (e) => toast.error(e.message) }),
   defaultOptions: { queries: { staleTime: 5 * 60 * 1000, gcTime: 5 * 60 * 1000 } },
 });
+```
+
+```tsx
+// src/app/providers/query-provider.tsx
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { queryClient } from "@/shared/api/query-client";
 
 export const QueryProvider = ({ children }) => (
   <QueryClientProvider client={queryClient}>

@@ -165,7 +165,6 @@ and connects the slices; the slices themselves do not know about each other.
 Common Inversion of Control techniques:
 
 - **Render props (React)**: pass components or render functions as props.
-- **Slots (Vue)**: use named slots to inject content from parent components.
 - **Dependency injection**: pass dependencies through props or context.
 
 #### Basic composition (React)
@@ -229,32 +228,6 @@ export const PostPage = () => (
 
 `CommentList` does not import from `user-profile`. The page injects the
 avatar component.
-
-#### Slots (Vue)
-
-Vue's slot system provides a natural way to compose features without
-cross-imports:
-
-```vue
-<!-- features/comment-list/ui/CommentList.vue -->
-<template>
-  <ul>
-    <li v-for="comment in comments" :key="comment.id">
-      <slot name="avatar" :userId="comment.userId" />
-      <span>{{ comment.text }}</span>
-    </li>
-  </ul>
-</template>
-
-<!-- pages/PostPage.vue -->
-<template>
-  <CommentList :comments="comments">
-    <template #avatar="{ userId }">
-      <UserAvatar :userId="userId" />
-    </template>
-  </CommentList>
-</template>
-```
 
 ### Strategy D: Cross-feature reuse only via Public API
 

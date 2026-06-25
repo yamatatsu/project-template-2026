@@ -16,15 +16,15 @@ common convention list (`ui`, `api`, `model`, `lib`, `config`) applies to
 all layers but is rarely a good fit here. In practice, projects use names
 that describe purpose: `routes`, `store`, `styles`, `providers`,
 `entrypoint`, etc. Choose names that match your stack (for example,
-`providers` for React/Vue provider components that wrap Redux,
-QueryClient, or theme contexts):
+`providers` for React provider components that wrap the QueryClient,
+theme, or other global contexts):
 
 ```text
 app/
   routes/          ← Route configuration (or router.tsx for single file)
-  store/           ← Global state store (Redux configureStore, Zustand root)
+  store/           ← Global state store
   styles/          ← Global CSS, reset, theme variables
-  providers/       ← Provider components (Redux Provider, QueryClientProvider)
+  providers/       ← Provider components (QueryClientProvider, theme provider)
   entrypoint.tsx   ← Application entry point (main.tsx, index.tsx)
 ```
 
@@ -41,18 +41,37 @@ app/
 ```
 
 ```typescript
-// app/router.tsx
+// app/router.tsx (TanStack Router, code-based definition)
+import {
+  createRouter,
+  createRootRoute,
+  createRoute,
+  Outlet,
+} from '@tanstack/react-router';
 import { HomePage } from '@/pages/home';
 import { ProfilePage } from '@/pages/profile';
 
-export const router = createBrowserRouter([
-  { path: '/', element: <HomePage /> },
-  { path: '/profile/:id', element: <ProfilePage /> },
-]);
+const rootRoute = createRootRoute({ component: () => <Outlet /> });
+
+const homeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: HomePage,
+});
+const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/profile/$id',
+  component: ProfilePage,
+});
+
+const routeTree = rootRoute.addChildren([homeRoute, profileRoute]);
+
+export const router = createRouter({ routeTree });
 ```
 
-**Belongs in app:** Global providers (Redux store, QueryClient, theme),
-routing setup, global styles, error boundaries, analytics initialization.
+**Belongs in app:** Global providers (global state store, QueryClient,
+theme), routing setup, global styles, error boundaries, analytics
+initialization.
 
 **Does not belong:** Feature-specific code, business logic, page-level UI.
 
@@ -321,7 +340,7 @@ shared/
   types/              ← Which domain do they describe?
   utils/              ← Utility for what?
   helpers/            ← Same problem
-  actions/            ← Redux actions for what?
+  actions/            ← State actions for what?
 
 // ✅ GOOD: grouping by purpose (what the code is for)
 shared/
@@ -357,7 +376,7 @@ model/selectors.ts
 model/user.ts           ← User types + logic + store
 model/order.ts          ← Order types + logic + store
 api/fetch-profile.ts    ← Clear what this API does
-model/todo.ts           ← Redux slice + selectors + thunks
+model/todo.ts           ← Todo state store + selectors + actions
 ```
 
 ### Single-concern segments
@@ -467,24 +486,19 @@ entire content.
 
 ## Path Aliases
 
-Configure path aliases so imports follow the `@/layer/slice` pattern:
+Configure a single `@/*` alias so imports follow the `@/layer/slice`
+pattern:
 
 ```json
 // tsconfig.json
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@/app/*": ["src/app/*"],
-      "@/pages/*": ["src/pages/*"],
-      "@/widgets/*": ["src/widgets/*"],
-      "@/features/*": ["src/features/*"],
-      "@/entities/*": ["src/entities/*"],
-      "@/shared/*": ["src/shared/*"]
+      "@/*": ["./src/*"]
     }
   }
 }
 ```
 
-For framework-specific alias configuration (Vite, Next.js, Nuxt, Astro),
-see `references/framework-integration.md`.
+For Vite + React alias configuration, see
+`references/framework-integration.md`.

@@ -9,9 +9,9 @@ description: >
   deciding whether to create or remove an entity, evaluating whether the
   entities layer is needed at all, deciding whether logic should remain local
   or be extracted, migrating from FSD v2.0 or a non-FSD codebase, integrating
-  FSD with frameworks (Next.js App Router and Pages Router, Nuxt, Vite,
-  Astro), or implementing common patterns such as authentication, API
-  handling, Redux, and TanStack Query (React Query) within FSD.
+  FSD with Vite + React + TanStack Router, or implementing common patterns
+  such as authentication, API handling, and TanStack Query (React Query)
+  within FSD.
 ---
 
 # Feature-Sliced Design (FSD) v2.1
@@ -152,14 +152,9 @@ segment (`shared/ui/index.ts`, `shared/api/index.ts`, etc.) rather than
 one top-level `shared/index.ts`. This keeps imports from Shared
 organized by intent.
 
-### Environment-specific public APIs
-
-A slice should normally expose its public API through a single `index.ts`.
-Ad-hoc customization is not recommended.
-
-If a single `index.ts` cannot preserve a runtime boundary, add an
-environment-specific entry point such as `index.server.ts`. See
-`references/framework-integration.md`.
+A slice exposes its public API through a single `index.ts`. In a
+client-rendered SPA there is no server/client runtime split, so split
+entry points (such as `index.server.ts`) are not needed.
 
 ### 4-3. No cross-imports between slices on the same layer
 
@@ -467,14 +462,12 @@ Do **not** preload all references.
   FSD, or deprecating the processes layer:
   → Read `references/migration-guide.md`
 
-- **When integrating FSD with a specific framework** (Next.js with App Router
-  or Pages Router, Nuxt, Vite, CRA, Astro) for wiring routes to FSD pages,
-  placing middleware/instrumentation files, structuring API route handlers,
-  or configuring path aliases:
+- **When integrating FSD with Vite + React + TanStack Router** for wiring
+  routes to FSD pages or configuring path aliases:
   → Read `references/framework-integration.md`
 
 - **When implementing concrete code patterns** for authentication, API request
-  handling, type definitions, or state management (Redux, TanStack Query /
+  handling, type definitions, or state management (TanStack Query /
   React Query, including query factories, infinite scroll, Suspense mode,
   and `useMutationState`) within FSD structure:
   → Read `references/practical-examples.md`

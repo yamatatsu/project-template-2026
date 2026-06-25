@@ -10,13 +10,17 @@
 ### レイヤー（上位 → 下位）
 
 ```
-app/        # エントリ・providers・合成ルート（main.tsx, app.tsx, styles/）
-pages/      # ルート単位の画面（例: pages/home）
-widgets/    # 複数 feature/entity を束ねる大きな UI ブロック
+app/        # エントリ・providers・ルーター・ルートレイアウト（main.tsx, router.tsx, app-layout.tsx, styles/）
+pages/      # ルート単位の画面（例: pages/tasks, pages/users）
+widgets/    # 複数 feature/entity を束ねる大きな UI ブロック（例: app-header, app-sidebar）
 features/   # ユーザー操作・ユースケース
 entities/   # ビジネスエンティティ
 shared/     # 横断的に再利用する基盤（ui/ lib/ api/ など、ビジネス非依存）
 ```
+
+### ルーティング（TanStack Router）
+
+ルーター定義は app レイヤーの `app/router.tsx` に置く（**コードベースルーティング**。生成 `routeTree` ファイルで `src/` を汚さない）。各ルートの `component` は `@/pages/*` の public API から import する。ヘッダー・サイドナビなどのレイアウトシェルはルートルートの `app/app-layout.tsx`（`@/widgets/*` を合成）に置く。ルート定義は薄く保ち、画面のロジックは pages に置く。
 
 ### ルール
 
