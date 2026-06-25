@@ -29,10 +29,10 @@ packages/    (reserved for shared packages)
 
 ```bash
 bun install
-bun run dev          # runs backend (:3000) and frontend (:5173) together
+bun run dev          # runs backend (:3001) and frontend (:5001) together
 ```
 
-Open http://localhost:5173 — the page fetches `hello world` from the backend
+Open http://localhost:5001 — the page fetches `hello world` from the backend
 through the typed RPC client. Vite proxies `/api/*` to the backend in dev.
 
 ## Scripts (run from the repo root)
@@ -55,7 +55,7 @@ The backend exports its app type:
 
 ```ts
 // apps/backend/src/app.ts
-export type AppType = typeof app
+export type AppType = typeof app;
 ```
 
 The frontend consumes it through the Hono RPC client (`apps/frontend/src/lib/api.ts`),
