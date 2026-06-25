@@ -1,22 +1,22 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query';
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { client } from '@/lib/api'
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { client } from '@/lib/api';
 
 function useHelloWorld() {
   return useQuery({
     queryKey: ['hello-world'],
     queryFn: async () => {
-      const res = await client['hello-world'].$get()
-      if (!res.ok) throw new Error('Failed to fetch hello world')
-      return res.json()
+      const res = await client['hello-world'].$get();
+      if (!res.ok) throw new Error('Failed to fetch hello world');
+      return res.json();
     },
-  })
+  });
 }
 
 export function App() {
-  const { data, isPending, isError, refetch, isFetching } = useHelloWorld()
+  const { data, isPending, isError, refetch, isFetching } = useHelloWorld();
 
   return (
     <main className="bg-background flex min-h-svh items-center justify-center p-6">
@@ -37,5 +37,5 @@ export function App() {
         </CardContent>
       </Card>
     </main>
-  )
+  );
 }

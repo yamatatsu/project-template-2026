@@ -1,5 +1,5 @@
-import type { AppType } from 'backend'
-import { hc } from 'hono/client'
+import type { AppType } from 'backend';
+import { hc } from 'hono/client';
 
 /**
  * Typed Hono RPC client.
@@ -8,6 +8,6 @@ import { hc } from 'hono/client'
  * is fully typed end-to-end. In development, requests go to `/api` and are
  * proxied to the backend by Vite (see `vite.config.ts`).
  */
-const baseUrl = import.meta.env.VITE_API_URL ?? '/api'
+const baseUrl = import.meta.env.VITE_API_URL ?? '/api';
 
-export const client = hc<AppType>(baseUrl)
+export const client = hc<AppType>(baseUrl);

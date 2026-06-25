@@ -1,9 +1,0 @@
-# Takumi Guard — registry proxy that blocks known-malicious packages.
-# https://shisho.dev/docs/t/guard/quickstart/npm
-# Bun also reads .npmrc, but setting it here makes the proxy explicit for Bun.
-[install]
-registry = "https://npm.flatt.tech/"
-
-# Authenticated (org) mode — replace the line above with the object form and
-# provide the tg_org_ token via the TAKUMI_GUARD_TOKEN env var (never hardcode it):
-# registry = { url = "https://npm.flatt.tech/", token = "$TAKUMI_GUARD_TOKEN" }
