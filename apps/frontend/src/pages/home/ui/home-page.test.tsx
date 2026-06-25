@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import { App } from './App.tsx';
+import { HomePage } from './home-page';
 
 function renderWithQuery(ui: ReactNode) {
   const queryClient = new QueryClient({
@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 it('renders the hello world message from the API', async () => {
-  renderWithQuery(<App />);
+  renderWithQuery(<HomePage />);
 
   await waitFor(() => {
     expect(screen.getByTestId('message')).toHaveTextContent('hello world');

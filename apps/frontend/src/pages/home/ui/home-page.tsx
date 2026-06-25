@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { client } from '@/lib/api';
+import { client } from '@/shared/api';
+import { Button } from '@/shared/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 
 function useHelloWorld() {
   return useQuery({
@@ -15,7 +15,7 @@ function useHelloWorld() {
   });
 }
 
-export function App() {
+export function HomePage() {
   const { data, isPending, isError, refetch, isFetching } = useHelloWorld();
 
   return (

@@ -26,6 +26,9 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      - name: Arch lint (FSD / steiger)
+        run: pnpm steiger
+
       - name: Format check
         run: pnpm run format:check
 
