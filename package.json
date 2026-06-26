@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm -r --parallel dev",
-    "dev:backend": "pnpm --filter backend dev",
-    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:backend": "pnpm --filter @icasu/backend dev",
+    "dev:frontend": "pnpm --filter @icasu/frontend dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
@@ -14,7 +14,13 @@
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "steiger": "pnpm --filter frontend run steiger",
+    "steiger": "pnpm --filter @icasu/frontend run steiger",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:generate": "pnpm --filter @icasu/db db:generate",
+    "db:migrate": "pnpm --filter @icasu/db db:migrate",
+    "db:push": "pnpm --filter @icasu/db db:push",
+    "db:studio": "pnpm --filter @icasu/db db:studio",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -22,7 +28,7 @@
     "lint-staged": "^17.0.8",
     "oxfmt": "^0.56.0",
     "oxlint": "^1.71.0",
-    "typescript": "^6.0.3"
+    "typescript": "7.0.1-rc"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

@@ -1,4 +1,4 @@
-import type { AppType } from 'backend';
+import type { AppType } from '@icasu/backend';
 import { hc } from 'hono/client';
 
 /**

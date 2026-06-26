@@ -1,24 +1,30 @@
 {
-  "name": "backend",
+  "name": "@icasu/backend",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./app": "./src/app.ts"
+    "./app": "./src/app.ts",
+    "./schema": "./src/tasks/schema.ts"
   },
   "scripts": {
-    "dev": "node --watch src/index.ts",
-    "start": "node src/index.ts",
+    "dev": "node --watch --env-file-if-exists=../../.env src/index.ts",
+    "start": "node --env-file-if-exists=../../.env src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
-    "hono": "^4.12.27"
+    "@hono/zod-validator": "^0.8.0",
+    "@icasu/db": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.27",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.3",
     "@types/node": "^24.0.0",
     "vitest": "^4.1.9"
   }
