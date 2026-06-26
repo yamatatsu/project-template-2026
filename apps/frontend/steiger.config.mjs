@@ -28,7 +28,9 @@ export default defineConfig([
     },
   },
   // テスト・設定ファイルはアーキテクチャ解析の対象外。
+  // テストコードの置き場は __tests__ ディレクトリ（または同居の *.test.{ts,tsx}）に統一する。
+  // `test` ディレクトリは意図的に免除しない（FSD 解析に晒すことで __tests__ へ誘導する）。
   {
-    ignores: ['**/*.test.{ts,tsx}', '**/__tests__/**', '**/test/**', '**/*.config.*'],
+    ignores: ['**/*.test.{ts,tsx}', '**/__tests__/**', '**/*.config.*'],
   },
 ]);
