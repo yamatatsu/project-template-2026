@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
+import { tasksRoute } from './tasks/route.ts';
+
 /**
  * The Hono application.
  *
@@ -9,6 +11,7 @@ import { cors } from 'hono/cors';
  */
 export const app = new Hono()
   .use('*', cors())
-  .get('/hello-world', (c) => c.json({ message: 'hello world' }));
+  .get('/hello-world', (c) => c.json({ message: 'hello world' }))
+  .route('/tasks', tasksRoute);
 
 export type AppType = typeof app;
