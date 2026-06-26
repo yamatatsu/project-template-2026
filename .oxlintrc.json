@@ -14,7 +14,7 @@
     "react/react-in-jsx-scope": "off",
     "import/no-unassigned-import": "off"
   },
-  "ignorePatterns": ["dist", "node_modules", "*.config.*"],
+  "ignorePatterns": ["dist", "node_modules", "*.config.*", "**/routeTree.gen.ts"],
   "overrides": [
     {
       "files": ["**/*.test.ts", "**/*.test.tsx"],

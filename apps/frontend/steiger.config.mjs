@@ -27,10 +27,11 @@ export default defineConfig([
       'fsd/insignificant-slice': 'off',
     },
   },
-  // テスト・設定ファイルはアーキテクチャ解析の対象外。
+  // テスト・設定ファイル・生成物はアーキテクチャ解析の対象外。
   // テストコードの置き場は __tests__ ディレクトリ（または同居の *.test.{ts,tsx}）に統一する。
   // `test` ディレクトリは意図的に免除しない（FSD 解析に晒すことで __tests__ へ誘導する）。
+  // routeTree.gen.ts は tanstackRouter が app/ に生成するルートツリー（手で触らない）。
   {
-    ignores: ['**/*.test.{ts,tsx}', '**/__tests__/**', '**/*.config.*'],
+    ignores: ['**/*.test.{ts,tsx}', '**/__tests__/**', '**/*.config.*', '**/routeTree.gen.ts'],
   },
 ]);

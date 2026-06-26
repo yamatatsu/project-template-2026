@@ -9,5 +9,11 @@
   "insertFinalNewline": true,
   "sortImports": true,
   "sortTailwindcss": true,
-  "ignorePatterns": ["**/dist/**", "**/node_modules/**", "**/shared/ui/**", "**/.claude/skills/**"]
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/shared/ui/**",
+    "**/.claude/skills/**",
+    "**/routeTree.gen.ts"
+  ]
 }

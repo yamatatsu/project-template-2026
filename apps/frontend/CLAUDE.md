@@ -10,7 +10,7 @@
 ### レイヤー（上位 → 下位）
 
 ```
-app/        # エントリ・providers・ルーター・ルートレイアウト（main.tsx, router.tsx, app-layout.tsx, styles/）
+app/        # エントリ・providers・ルーティング・ルートレイアウト（main.tsx, router.tsx, routes/, routeTree.gen.ts, app-layout.tsx, styles/）
 pages/      # ルート単位の画面（例: pages/tasks, pages/users）
 widgets/    # 複数 feature/entity を束ねる大きな UI ブロック（例: app-header, app-sidebar）
 features/   # ユーザー操作・ユースケース
@@ -18,9 +18,33 @@ entities/   # ビジネスエンティティ
 shared/     # 横断的に再利用する基盤（ui/ lib/ api/ など、ビジネス非依存）
 ```
 
-### ルーティング（TanStack Router）
+### ルーティング（TanStack Router / file-based routing）
 
-ルーター定義は app レイヤーの `app/router.tsx` に置く（**コードベースルーティング**。生成 `routeTree` ファイルで `src/` を汚さない）。各ルートの `component` は `@/pages/*` の public API から import する。ヘッダー・サイドナビなどのレイアウトシェルはルートルートの `app/app-layout.tsx`（`@/widgets/*` を合成）に置く。ルート定義は薄く保ち、画面のロジックは pages に置く。
+ルーティングは **app レイヤーの責務**。**file-based routing（flat routes）** を採用する。ルートが増えても 1 ファイルが肥大化せず破綻しにくい。
+
+**配置（FSDでどこに書くか）**
+
+- ルート定義ファイルは `app/routes/*.tsx`。トップレベルに `src/routes/`（FSD 非レイヤー）は**作らない**。`tanstackRouter` プラグインで `routesDirectory` と `generatedRouteTree` を `app/` 配下に向ける（`vite.config.ts`）。
+- 生成物 `app/routeTree.gen.ts` は手で触らない。コミットはするが oxlint/oxfmt/steiger の対象外（各設定で除外済み。`tsc` 単独の typecheck/CI を壊さないため commit する）。
+- `app/router.tsx` は生成 `routeTree` を `createRouter` に束ねるだけの薄い層（テスト互換のため `routeTree` を re-export）。
+- レイアウトシェル（providers + ヘッダー/サイドナビ）はルートルート `app/routes/__root.tsx` → `app/app-layout.tsx`（`@/widgets/*` を合成）。
+
+**ルートファイルは薄く保つ**。`createFileRoute(...)` で `component` に `@/pages/*` の public API を渡すだけ。データ取得・画面ロジックは pages に置く。
+
+**flat routes 命名規約**（`.` 区切りでパスを表現。子を持つ葉は `*.index.tsx`、`tasks.tsx` のような中間レイアウトは作らない）
+
+| URL                   | ファイル                         | route id                      |
+| --------------------- | -------------------------------- | ----------------------------- |
+| `/`                   | `routes/index.tsx`               | `/`（→ `/tasks` へ redirect） |
+| `/tasks`              | `routes/tasks.index.tsx`         | `/tasks/`                     |
+| `/tasks/new`          | `routes/tasks.new.tsx`           | `/tasks/new`                  |
+| `/tasks/$taskId`      | `routes/tasks.$taskId.index.tsx` | `/tasks/$taskId/`             |
+| `/tasks/$taskId/edit` | `routes/tasks.$taskId.edit.tsx`  | `/tasks/$taskId/edit`         |
+| `/users`              | `routes/users.tsx`               | `/users`                      |
+
+**ルート追加の手順**: ① `app/routes/` に薄いルートファイルを足す → ② 画面実体は `@/pages/*` に作り public API を import → ③ `pnpm dev`（または `pnpm build`）で `routeTree.gen.ts` が再生成される。
+
+**注意**: pages 側で `useParams({ from: '<route id>' })` を使う場合、`from` は上表の **route id**（index ルートは末尾 `/` 付き、例 `/tasks/$taskId/`）に合わせる。
 
 ### ルール
 

@@ -2,11 +2,23 @@
 import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
+import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    // ルーティングは FSD の app レイヤーの責務。routes と生成物 routeTree.gen.ts を
+    // app/ 配下に閉じ込め、トップレベルに FSD 非レイヤーの src/routes/ を作らない。
+    // tanstackRouter は react より前に置く必要がある。
+    tanstackRouter({
+      target: 'react',
+      routesDirectory: './src/app/routes',
+      generatedRouteTree: './src/app/routeTree.gen.ts',
+    }),
+    react(),
+    tailwindcss(),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

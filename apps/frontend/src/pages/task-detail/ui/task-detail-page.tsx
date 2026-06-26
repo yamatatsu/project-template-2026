@@ -8,7 +8,7 @@ import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/shared/ui/card';
 
 export function TaskDetailPage() {
-  const { taskId } = useParams({ from: '/tasks/$taskId' });
+  const { taskId } = useParams({ from: '/tasks/$taskId/' });
   const navigate = useNavigate();
   const { data: task, isPending, isError } = useQuery(taskDetailQuery(taskId));
 
