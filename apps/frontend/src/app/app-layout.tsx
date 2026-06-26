@@ -4,14 +4,18 @@ import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar';
 import { AppHeader } from '@/widgets/app-header';
 import { AppSidebar } from '@/widgets/app-sidebar';
 
+import { QueryProvider } from './providers/query-provider';
+
 export function AppLayout() {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <AppHeader />
-        <Outlet />
-      </SidebarInset>
-    </SidebarProvider>
+    <QueryProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <AppHeader />
+          <Outlet />
+        </SidebarInset>
+      </SidebarProvider>
+    </QueryProvider>
   );
 }
