@@ -2,8 +2,8 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { makeTask, rpcResponse } from '@/shared/test/fixtures';
-import { renderAt } from '@/shared/test/render-route';
+import { makeTask, rpcResponse } from '@/__tests__/fixtures';
+import { renderAt } from '@/__tests__/render-route';
 
 const tasksGet = vi.fn();
 

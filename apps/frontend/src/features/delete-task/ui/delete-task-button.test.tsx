@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { type ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { makeTask, rpcResponse } from '@/shared/test/fixtures';
+import { makeTask, rpcResponse } from '@/__tests__/fixtures';
 
 import { DeleteTaskButton } from './delete-task-button';
 

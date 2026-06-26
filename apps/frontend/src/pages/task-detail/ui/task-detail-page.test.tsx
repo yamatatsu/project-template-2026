@@ -1,8 +1,8 @@
 import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { makeTask, rpcResponse } from '@/shared/test/fixtures';
-import { renderAt } from '@/shared/test/render-route';
+import { makeTask, rpcResponse } from '@/__tests__/fixtures';
+import { renderAt } from '@/__tests__/render-route';
 
 const detailGet = vi.fn();
 
