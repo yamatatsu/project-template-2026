@@ -21,9 +21,14 @@
     "db:migrate": "pnpm --filter @icasu/db db:migrate",
     "db:push": "pnpm --filter @icasu/db db:push",
     "db:studio": "pnpm --filter @icasu/db db:studio",
+    "cdk:synth": "pnpm --filter @icasu/iac run synth",
+    "cdk:diff": "pnpm --filter @icasu/iac run diff",
+    "cdk:deploy": "pnpm --filter @icasu/iac run deploy",
+    "cdk:destroy": "pnpm --filter @icasu/iac run destroy",
     "prepare": "husky"
   },
   "devDependencies": {
+    "esbuild": "^0.25.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
     "oxfmt": "^0.56.0",

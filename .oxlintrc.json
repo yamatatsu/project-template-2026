@@ -14,12 +14,25 @@
     "react/react-in-jsx-scope": "off",
     "import/no-unassigned-import": "off"
   },
-  "ignorePatterns": ["dist", "node_modules", "*.config.*", "**/routeTree.gen.ts"],
+  "ignorePatterns": [
+    "dist",
+    "node_modules",
+    "*.config.*",
+    "**/routeTree.gen.ts",
+    "apps/iac/cdk.out",
+    "apps/iac/cloudfront"
+  ],
   "overrides": [
     {
       "files": ["**/*.test.ts", "**/*.test.tsx"],
       "rules": {
         "no-console": "off"
+      }
+    },
+    {
+      "files": ["apps/iac/**/*.ts"],
+      "rules": {
+        "no-new": "off"
       }
     }
   ]
