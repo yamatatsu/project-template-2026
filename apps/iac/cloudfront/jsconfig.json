@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "moduleDetection": "force",
+    "checkJs": false
+  },
+  "include": ["*.js"]
+}
