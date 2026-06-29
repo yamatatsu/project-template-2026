@@ -1,8 +1,8 @@
 import { App, Tags } from 'aws-cdk-lib';
 
-import { resolveConfig } from '../lib/config.ts';
-import { DbStack } from '../lib/db-stack.ts';
-import { WebStack } from '../lib/web-stack.ts';
+import { resolveConfig } from './config.ts';
+import { DbStack } from './stacks/db/index.ts';
+import { WebStack } from './stacks/web/index.ts';
 
 const app = new App();
 const config = resolveConfig(app);
@@ -19,8 +19,7 @@ new WebStack(app, `${config.stackPrefix}-Web`, {
   env,
   stage: config.stage,
   apiAuth: config.apiAuth,
-  dsqlEndpoint: db.clusterEndpoint,
-  dsqlClusterArn: db.clusterArn,
+  dsqlCluster: db.cluster,
   description: 'Cognito + CloudFront/S3 + API Gateway/Lambda web stack',
 });
 

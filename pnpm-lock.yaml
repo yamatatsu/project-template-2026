@@ -163,6 +163,9 @@ importers:
 
   apps/iac:
     dependencies:
+      '@aws-cdk/aws-dsql-alpha':
+        specifier: 2.260.0-alpha.0
+        version: 2.260.0-alpha.0(aws-cdk-lib@2.260.0(constructs@10.6.0))(constructs@10.6.0)
       '@icasu/backend':
         specifier: workspace:*
         version: link:../backend
@@ -233,6 +236,13 @@ packages:
 
   '@aws-cdk/asset-node-proxy-agent-v6@2.1.2':
     resolution: {integrity: sha512-pDiuqH+qY3zM9lhhLjbKJ1tnKOHzQ2V4Wr/3qsxyKeKAkuPMI/BVGvZG1PbrikUw949cGVTfVEt4ETKKYnrj0Q==}
+
+  '@aws-cdk/aws-dsql-alpha@2.260.0-alpha.0':
+    resolution: {integrity: sha512-cZS5rXod29UMpdAdNqCpY0/YV/RUW83wcV5y2imCB/eh9qkPl7mfAUz77E+UuU1mYiP+CeaiPFDbHQtme0FidQ==}
+    engines: {node: '>= 20.0.0'}
+    peerDependencies:
+      aws-cdk-lib: ^2.260.0
+      constructs: ^10.5.0
 
   '@aws-cdk/cloud-assembly-schema@54.5.0':
     resolution: {integrity: sha512-X37oRfMQYO/wXBBDotbW8msJ6AgrcMio/W6TpDR/9To9TUWld1KtY/jveHpU58nZyLVPTYEhDgFP548w3JJGsQ==}
@@ -3988,6 +3998,11 @@ snapshots:
   '@aws-cdk/asset-awscli-v1@2.2.282': {}
 
   '@aws-cdk/asset-node-proxy-agent-v6@2.1.2': {}
+
+  '@aws-cdk/aws-dsql-alpha@2.260.0-alpha.0(aws-cdk-lib@2.260.0(constructs@10.6.0))(constructs@10.6.0)':
+    dependencies:
+      aws-cdk-lib: 2.260.0(constructs@10.6.0)
+      constructs: 10.6.0
 
   '@aws-cdk/cloud-assembly-schema@54.5.0': {}
 

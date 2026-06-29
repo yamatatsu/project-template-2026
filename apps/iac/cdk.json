@@ -1,5 +1,5 @@
 {
-  "app": "node bin/iac.ts",
+  "app": "node src/app.ts",
   "watch": {
     "include": ["**"],
     "exclude": ["README.md", "cdk*.json", "tsconfig.json", "node_modules", "cdk.out"]

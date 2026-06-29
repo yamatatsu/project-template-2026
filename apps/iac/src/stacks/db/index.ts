@@ -1,5 +1,5 @@
-import { ArnFormat, CfnOutput, Stack, type StackProps } from 'aws-cdk-lib';
-import { CfnCluster } from 'aws-cdk-lib/aws-dsql';
+import { Cluster } from '@aws-cdk/aws-dsql-alpha';
+import { CfnOutput, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 
 export interface DbStackProps extends StackProps {
@@ -10,15 +10,16 @@ export interface DbStackProps extends StackProps {
 /**
  * Database stack: a single-region Aurora DSQL cluster.
  *
- * DSQL is a serverless, distributed PostgreSQL-compatible database. There is
- * no L2 construct yet, so we use the `AWS::DSQL::Cluster` L1 resource.
+ * DSQL is a serverless, distributed PostgreSQL-compatible database. We use the
+ * `@aws-cdk/aws-dsql-alpha` L2 `Cluster` construct, which surfaces the cluster
+ * ARN/endpoint as attributes and provides `grantConnect*` helpers.
  *
  * Connections authenticate with short-lived IAM tokens (no static password) —
  * see `packages/db/src/client.ts` for how the runtime builds them.
  */
 export class DbStack extends Stack {
   /** The DSQL cluster resource. */
-  readonly cluster: CfnCluster;
+  readonly cluster: Cluster;
   /** Cluster connection endpoint: `<id>.dsql.<region>.on.aws`. */
   readonly clusterEndpoint: string;
   /** Cluster ARN, for granting `dsql:DbConnect*` to consumers. */
@@ -27,24 +28,19 @@ export class DbStack extends Stack {
   constructor(scope: Construct, id: string, props: DbStackProps) {
     super(scope, id, props);
 
-    this.cluster = new CfnCluster(this, 'Cluster', {
+    const isProd = props.stage === 'prod';
+
+    this.cluster = new Cluster(this, 'Cluster', {
+      clusterName: `${props.stage}-app-db`,
       // Protect production data from accidental `cdk destroy`.
-      deletionProtectionEnabled: props.stage === 'prod',
-      tags: [{ key: 'Name', value: `${props.stage}-app-db` }],
+      deletionProtection: isProd,
+      removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
     });
 
-    this.clusterEndpoint = `${this.cluster.attrIdentifier}.dsql.${this.region}.on.aws`;
+    this.clusterEndpoint = this.cluster.clusterEndpoint;
+    this.clusterArn = this.cluster.clusterArn;
 
-    // Build the ARN explicitly rather than depending on an L1 attribute name,
-    // so the grant is stable across construct versions.
-    this.clusterArn = this.formatArn({
-      service: 'dsql',
-      resource: 'cluster',
-      resourceName: this.cluster.attrIdentifier,
-      arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
-    });
-
-    new CfnOutput(this, 'ClusterId', { value: this.cluster.attrIdentifier });
+    new CfnOutput(this, 'ClusterId', { value: this.cluster.clusterIdentifier });
     new CfnOutput(this, 'ClusterEndpoint', { value: this.clusterEndpoint });
     new CfnOutput(this, 'ClusterArn', { value: this.clusterArn });
   }

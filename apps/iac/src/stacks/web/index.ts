@@ -2,42 +2,31 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
-import { HttpApi, HttpMethod, type IHttpRouteAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2';
+import type { ICluster } from '@aws-cdk/aws-dsql-alpha';
+import { CfnOutput, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
+import { type IHttpRouteAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpJwtAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
-import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
-import {
-  AccountRecovery,
-  OAuthScope,
-  UserPool,
-  type UserPoolClient,
-  VerificationEmailStyle,
-} from 'aws-cdk-lib/aws-cognito';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import type { Construct } from 'constructs';
 
+import { Api } from './api.ts';
+import { Cognito } from './cognito.ts';
+
 const here = fileURLToPath(new URL('.', import.meta.url));
-const LAMBDA_ENTRY = join(here, '../lambda/api.ts');
-const DEPS_LOCK_FILE = join(here, '../../../pnpm-lock.yaml');
-const FRONTEND_DIST = join(here, '../../frontend/dist');
-const STRIP_API_FN = join(here, '../cloudfront/strip-api-prefix.js');
-const SPA_FALLBACK_FN = join(here, '../cloudfront/spa-fallback.js');
+const FRONTEND_DIST = join(here, '../../../../frontend/dist');
+const STRIP_API_FN = join(here, '../../../cloudfront/strip-api-prefix.js');
+const SPA_FALLBACK_FN = join(here, '../../../cloudfront/spa-fallback.js');
 
 export interface WebStackProps extends StackProps {
   /** Logical environment name (e.g. `dev`, `prod`). */
   readonly stage: string;
   /** Attach the Cognito JWT authorizer to `/api/*` routes. */
   readonly apiAuth: boolean;
-  /** DSQL cluster endpoint from {@link DbStack}. */
-  readonly dsqlEndpoint: string;
-  /** DSQL cluster ARN from {@link DbStack}, for the IAM connect grant. */
-  readonly dsqlClusterArn: string;
+  /** DSQL cluster from {@link DbStack}, for the IAM connect grant. */
+  readonly dsqlCluster: ICluster;
 }
 
 /**
@@ -56,64 +45,11 @@ export class WebStack extends Stack {
 
     const isProd = props.stage === 'prod';
 
-    // --- Cognito ----------------------------------------------------------
-    const userPool = new UserPool(this, 'UserPool', {
-      selfSignUpEnabled: true,
-      signInAliases: { email: true },
-      autoVerify: { email: true },
-      userVerification: { emailStyle: VerificationEmailStyle.CODE },
-      accountRecovery: AccountRecovery.EMAIL_ONLY,
-      passwordPolicy: {
-        minLength: 8,
-        requireLowercase: true,
-        requireDigits: true,
-        requireUppercase: true,
-        requireSymbols: false,
-      },
-      removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+    // --- API Gateway + Lambda (Hono) -------------------------------------
+    const api = new Api(this, 'Api', {
+      stage: props.stage,
+      dsqlCluster: props.dsqlCluster,
     });
-
-    userPool.addDomain('HostedUiDomain', {
-      cognitoDomain: { domainPrefix: `icasu-${props.stage}-${this.account}` },
-    });
-
-    // --- API Lambda (Hono) ------------------------------------------------
-    const apiFn = new NodejsFunction(this, 'ApiFn', {
-      entry: LAMBDA_ENTRY,
-      handler: 'handler',
-      runtime: Runtime.NODEJS_22_X,
-      architecture: Architecture.ARM_64,
-      memorySize: 512,
-      timeout: Duration.seconds(30),
-      depsLockFilePath: DEPS_LOCK_FILE,
-      environment: {
-        DSQL_ENDPOINT: props.dsqlEndpoint,
-        DSQL_REGION: this.region,
-        NODE_OPTIONS: '--enable-source-maps',
-      },
-      bundling: {
-        format: OutputFormat.CJS,
-        target: 'node22',
-        sourceMap: true,
-        // pg lazily requires its optional native binding; keep it external.
-        externalModules: ['pg-native'],
-      },
-    });
-
-    // Connect to DSQL with a short-lived IAM token (admin role).
-    apiFn.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['dsql:DbConnectAdmin'],
-        resources: [props.dsqlClusterArn],
-      }),
-    );
-
-    // --- HTTP API ---------------------------------------------------------
-    const httpApi = new HttpApi(this, 'HttpApi', {
-      description: `${props.stage} task API`,
-    });
-    const apiHost = `${httpApi.apiId}.execute-api.${this.region}.amazonaws.com`;
-    const integration = new HttpLambdaIntegration('ApiIntegration', apiFn);
 
     // --- Static site bucket ----------------------------------------------
     const siteBucket = new Bucket(this, 'SiteBucket', {
@@ -151,7 +87,7 @@ export class WebStack extends Stack {
       },
       additionalBehaviors: {
         '/api/*': {
-          origin: new origins.HttpOrigin(apiHost, {
+          origin: new origins.HttpOrigin(api.apiHost, {
             protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
           }),
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -172,30 +108,22 @@ export class WebStack extends Stack {
 
     const appUrl = `https://${distribution.distributionDomainName}`;
 
-    // --- Cognito app client (needs the CloudFront URL for callbacks) ------
-    const userPoolClient: UserPoolClient = userPool.addClient('WebClient', {
-      authFlows: { userSrp: true },
-      preventUserExistenceErrors: true,
-      oAuth: {
-        flows: { authorizationCodeGrant: true },
-        scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
-        callbackUrls: [appUrl, 'http://localhost:5173'],
-        logoutUrls: [appUrl, 'http://localhost:5173'],
-      },
+    // --- Cognito (needs the CloudFront URL for callbacks) -----------------
+    const cognito = new Cognito(this, 'Cognito', {
+      stage: props.stage,
+      appUrl,
     });
 
     // --- API routes (optionally protected by Cognito) ---------------------
     const authorizer: IHttpRouteAuthorizer | undefined = props.apiAuth
       ? new HttpJwtAuthorizer(
           'JwtAuthorizer',
-          `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`,
-          { jwtAudience: [userPoolClient.userPoolClientId] },
+          `https://cognito-idp.${this.region}.amazonaws.com/${cognito.userPool.userPoolId}`,
+          { jwtAudience: [cognito.userPoolClient.userPoolClientId] },
         )
       : undefined;
 
-    for (const path of ['/', '/{proxy+}']) {
-      httpApi.addRoutes({ path, methods: [HttpMethod.ANY], integration, authorizer });
-    }
+    api.addRoutes(authorizer);
 
     // --- Optional: upload a pre-built frontend ----------------------------
     if (existsSync(FRONTEND_DIST)) {
@@ -209,10 +137,10 @@ export class WebStack extends Stack {
 
     // --- Outputs ----------------------------------------------------------
     new CfnOutput(this, 'AppUrl', { value: appUrl });
-    new CfnOutput(this, 'ApiEndpoint', { value: httpApi.apiEndpoint });
+    new CfnOutput(this, 'ApiEndpoint', { value: api.apiEndpoint });
     new CfnOutput(this, 'SiteBucketName', { value: siteBucket.bucketName });
-    new CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
-    new CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId });
+    new CfnOutput(this, 'UserPoolId', { value: cognito.userPool.userPoolId });
+    new CfnOutput(this, 'UserPoolClientId', { value: cognito.userPoolClient.userPoolClientId });
     new CfnOutput(this, 'ApiAuthEnabled', { value: String(props.apiAuth) });
   }
 }

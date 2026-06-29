@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./app": "./src/app.ts",
+    "./lambda": "./src/lambda.ts",
     "./schema": "./src/tasks/schema.ts"
   },
   "scripts": {

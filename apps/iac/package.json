@@ -7,11 +7,10 @@
     "synth": "cdk synth",
     "diff": "cdk diff",
     "deploy": "cdk deploy --all --require-approval never",
-    "destroy": "cdk destroy --all",
-    "bootstrap": "cdk bootstrap",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-cdk/aws-dsql-alpha": "2.260.0-alpha.0",
     "@icasu/backend": "workspace:*",
     "aws-cdk-lib": "^2.260.0",
     "constructs": "^10.4.2",

@@ -24,7 +24,6 @@
     "cdk:synth": "pnpm --filter @icasu/iac run synth",
     "cdk:diff": "pnpm --filter @icasu/iac run diff",
     "cdk:deploy": "pnpm --filter @icasu/iac run deploy",
-    "cdk:destroy": "pnpm --filter @icasu/iac run destroy",
     "prepare": "husky"
   },
   "devDependencies": {

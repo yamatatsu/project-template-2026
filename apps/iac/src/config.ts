@@ -34,7 +34,14 @@ export function resolveConfig(app: App): IacConfig {
   const account = (ctx('account') as string | undefined) ?? process.env.CDK_DEFAULT_ACCOUNT;
   const apiAuth = asBool(ctx('apiAuth'), false);
 
-  const stackPrefix = `Icasu-${stage.charAt(0).toUpperCase()}${stage.slice(1)}`;
+  const stackPrefix = `Icasu-${pascalCase(stage)}`;
 
   return { stage, account, region, apiAuth, stackPrefix };
+}
+
+function pascalCase(str: string): string {
+  return str
+    .split(/[^a-zA-Z0-9]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
 }
