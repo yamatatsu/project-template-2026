@@ -29,10 +29,10 @@ Hono `app` as local dev (`apps/backend`), so backend code is unchanged.
 
 ## Prerequisites
 
-- An AWS account bootstrapped for CDK: `pnpm --filter @icasu/iac run bootstrap`
+- An AWS account bootstrapped for CDK: `pnpm --filter @icasu/iac exec cdk bootstrap`
 - Credentials in the environment (`AWS_PROFILE` / `AWS_REGION` or SSO).
-- CDK executes the app with Node's native TS support (`node bin/iac.ts`), the
-  same way the backend runs `.ts` directly — no ts-node required.
+- CDK executes the app with Node's native TS support (`node src/app.ts`, see
+  `cdk.json`), the same way the backend runs `.ts` directly — no ts-node required.
 
 ## Deploy
 
@@ -64,8 +64,8 @@ STAGE=prod cdk deploy --all
 These were chosen as sensible defaults because the build request couldn't be
 clarified interactively:
 
-1. **Region `ap-northeast-1` (Tokyo), single environment.** Multi-region DSQL and
-   multi-env wiring are not set up; `stage`/`region` context covers basic splits.
+1. **Region `ap-northeast-1` (Tokyo), single environment.** Multi-region DSQL is
+   not set up; the per-stage constants in `src/config.ts` cover basic splits.
 2. **HTTP API (API Gateway v2)** over REST API — cheaper, lower latency.
 3. **`/api` prefix stripped at CloudFront** (a CloudFront Function), so the
    backend keeps serving root paths (`/tasks`). No `basePath` in Hono.
