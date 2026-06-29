@@ -1,5 +1,5 @@
 import type { ICluster } from '@aws-cdk/aws-dsql-alpha';
-import { CfnOutput, Stack, type StackProps } from 'aws-cdk-lib';
+import { Stack, type StackProps } from 'aws-cdk-lib';
 import { HttpJwtAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import type { Construct } from 'constructs';
 
@@ -10,7 +10,7 @@ import { Cognito } from './cognito.ts';
 export interface WebStackProps extends StackProps {
   /** Logical environment name (e.g. `dev`, `prod`). */
   readonly stage: string;
-  /** DSQL cluster from {@link DbStack}, for the IAM connect grant. */
+  /** DSQL cluster from {@link DbStack}. */
   readonly dsqlCluster: ICluster;
 }
 
@@ -54,12 +54,5 @@ export class WebStack extends Stack {
     );
 
     api.addRoutes(authorizer);
-
-    // --- Outputs ----------------------------------------------------------
-    new CfnOutput(this, 'AppUrl', { value: cdn.appUrl });
-    new CfnOutput(this, 'ApiEndpoint', { value: api.apiEndpoint });
-    new CfnOutput(this, 'SiteBucketName', { value: cdn.siteBucket.bucketName });
-    new CfnOutput(this, 'UserPoolId', { value: cognito.userPool.userPoolId });
-    new CfnOutput(this, 'UserPoolClientId', { value: cognito.userPoolClient.userPoolClientId });
   }
 }

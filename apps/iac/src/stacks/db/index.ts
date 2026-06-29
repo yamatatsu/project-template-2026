@@ -1,5 +1,5 @@
 import { Cluster } from '@aws-cdk/aws-dsql-alpha';
-import { CfnOutput, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
+import { RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 
 export interface DbStackProps extends StackProps {
@@ -39,9 +39,5 @@ export class DbStack extends Stack {
 
     this.clusterEndpoint = this.cluster.clusterEndpoint;
     this.clusterArn = this.cluster.clusterArn;
-
-    new CfnOutput(this, 'ClusterId', { value: this.cluster.clusterIdentifier });
-    new CfnOutput(this, 'ClusterEndpoint', { value: this.clusterEndpoint });
-    new CfnOutput(this, 'ClusterArn', { value: this.clusterArn });
   }
 }

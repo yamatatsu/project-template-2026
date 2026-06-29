@@ -46,9 +46,6 @@ pnpm cdk:deploy                     # deploy both stacks (dev)
 pnpm --filter @icasu/frontend build && pnpm cdk:deploy
 ```
 
-Outputs include `AppUrl` (the CloudFront URL), `ApiEndpoint`, `UserPoolId`,
-`UserPoolClientId`, and `SiteBucketName`.
-
 ## Configuration
 
 The only runtime input is the `STAGE` environment variable (`dev`, `prod`, or
