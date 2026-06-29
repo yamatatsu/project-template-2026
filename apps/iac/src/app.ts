@@ -5,7 +5,7 @@ import { DbStack } from './stacks/db/index.ts';
 import { WebStack } from './stacks/web/index.ts';
 
 const app = new App();
-const config = resolveConfig(app);
+const config = resolveConfig();
 
 const env = { account: config.account, region: config.region };
 

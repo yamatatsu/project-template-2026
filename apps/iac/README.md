@@ -49,20 +49,17 @@ pnpm --filter @icasu/frontend build && pnpm cdk:deploy
 Outputs include `AppUrl` (the CloudFront URL), `ApiEndpoint`, `UserPoolId`,
 `UserPoolClientId`, and `SiteBucketName`.
 
-## Configuration (CDK context)
+## Configuration
 
-All defaults are overridable with `-c key=value`:
-
-| Key       | Default          | Notes                                                           |
-| --------- | ---------------- | --------------------------------------------------------------- |
-| `stage`   | `dev`            | Stack-name prefix; `prod` enables deletion protection + RETAIN. |
-| `region`  | `ap-northeast-1` | Must be an Aurora DSQL region.                                  |
-| `account` | CLI default      | Target AWS account.                                             |
+The only runtime input is the `STAGE` environment variable (`dev`, `prod`, or
+unset → `dev`). All other values (`region`, `account`, `stackPrefix`) are
+constants defined per stage in [`src/config.ts`](src/config.ts) (`devConfig` /
+`prodConfig`) — edit them there.
 
 The Cognito JWT authorizer is always attached to `/api/*`.
 
 ```sh
-cdk deploy --all -c stage=prod -c region=us-east-1
+STAGE=prod cdk deploy --all
 ```
 
 ## Assumptions made (change if needed)

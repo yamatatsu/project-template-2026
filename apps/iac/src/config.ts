@@ -1,14 +1,13 @@
-import type { App } from 'aws-cdk-lib';
-
 /**
- * Deployment configuration resolved from CDK context / environment.
+ * Deployment configuration.
  *
- * Override any value at synth/deploy time, e.g.:
- *   cdk deploy --all -c stage=prod -c region=us-east-1
+ * The only runtime input is the `STAGE` environment variable; every other value
+ * is a constant defined in this file and selected by stage. Deploy with:
+ *   STAGE=prod cdk deploy --all
  */
 export interface IacConfig {
   /** Logical environment name. Used as a stack-name prefix. */
-  readonly stage: string;
+  readonly stage: Stage;
   /** Target AWS account (falls back to the CLI's default account). */
   readonly account: string | undefined;
   /** Target AWS region. Aurora DSQL must be available here. */
@@ -17,22 +16,41 @@ export interface IacConfig {
   readonly stackPrefix: string;
 }
 
-export function resolveConfig(app: App): IacConfig {
-  const ctx = (key: string): unknown => app.node.tryGetContext(key);
+export type Stage = 'dev' | 'prod';
 
-  const stage = (ctx('stage') as string | undefined) ?? 'dev';
-  const region =
-    (ctx('region') as string | undefined) ?? process.env.CDK_DEFAULT_REGION ?? 'ap-northeast-1';
-  const account = (ctx('account') as string | undefined) ?? process.env.CDK_DEFAULT_ACCOUNT;
+const devConfig: IacConfig = {
+  stage: 'dev',
+  account: undefined,
+  region: 'ap-northeast-1',
+  stackPrefix: 'Icasu-Dev',
+};
 
-  const stackPrefix = `Icasu-${pascalCase(stage)}`;
+const prodConfig: IacConfig = {
+  stage: 'prod',
+  account: undefined,
+  region: 'ap-northeast-1',
+  stackPrefix: 'Icasu-Prod',
+};
 
-  return { stage, account, region, stackPrefix };
+const configByStage: Record<Stage, IacConfig> = {
+  dev: devConfig,
+  prod: prodConfig,
+};
+
+/**
+ * Resolve the active config from the `STAGE` environment variable.
+ *
+ * `STAGE` must be `dev`, `prod`, or unset; anything else throws. An unset
+ * `STAGE` falls back to `dev`.
+ */
+export function resolveConfig(): IacConfig {
+  const stage = resolveStage();
+  return configByStage[stage];
 }
 
-function pascalCase(str: string): string {
-  return str
-    .split(/[^a-zA-Z0-9]/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join('');
+function resolveStage(): Stage {
+  const raw = process.env.STAGE;
+  if (raw === undefined || raw === null || raw === '') return 'dev';
+  if (raw === 'dev' || raw === 'prod') return raw;
+  throw new Error(`Invalid STAGE: "${raw}". Expected "dev", "prod", or unset.`);
 }
