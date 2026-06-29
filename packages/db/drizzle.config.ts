@@ -1,5 +1,5 @@
 try {
-  process.loadEnvFile(new URL('../../.env', import.meta.url));
+  process.loadEnvFile(new URL('./.env', import.meta.url));
 } catch {}
 
 import { defineConfig } from 'drizzle-kit';
