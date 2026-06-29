@@ -17,6 +17,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@aws-sdk/dsql-signer": "^3.726.0",
     "drizzle-orm": "^0.45.2",
     "pg": "^8.22.0"
   },

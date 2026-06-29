@@ -20,6 +20,8 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 
 - **フロントエンド（`apps/frontend`）**: Feature-Sliced Design (FSD v2.1) に従う。詳細は
   [`apps/frontend/CLAUDE.md`](apps/frontend/CLAUDE.md)（frontend 内で作業すると自動で読み込まれる）。
+- **インフラ（`apps/iac`）**: AWS CDK (TypeScript)。設定は環境変数 `STAGE` のみ・CDK context 不使用、
+  `CfnOutput` 不使用など規約は [`apps/iac/CLAUDE.md`](apps/iac/CLAUDE.md)（iac 内で作業すると自動で読み込まれる）。
 
 ## ツール導入の方針
 
