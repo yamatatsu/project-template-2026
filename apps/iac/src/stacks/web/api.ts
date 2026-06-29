@@ -74,8 +74,8 @@ export class Api extends Construct {
     this.integration = new HttpLambdaIntegration('ApiIntegration', apiFn);
   }
 
-  /** Wire the proxy routes, optionally protected by a Cognito JWT authorizer. */
-  addRoutes(authorizer?: IHttpRouteAuthorizer): void {
+  /** Wire the proxy routes, protected by a Cognito JWT authorizer. */
+  addRoutes(authorizer: IHttpRouteAuthorizer): void {
     for (const path of ['/', '/{proxy+}']) {
       this.httpApi.addRoutes({
         path,

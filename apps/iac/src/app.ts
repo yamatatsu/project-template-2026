@@ -18,7 +18,6 @@ const db = new DbStack(app, `${config.stackPrefix}-Db`, {
 new WebStack(app, `${config.stackPrefix}-Web`, {
   env,
   stage: config.stage,
-  apiAuth: config.apiAuth,
   dsqlCluster: db.cluster,
   description: 'Cognito + CloudFront/S3 + API Gateway/Lambda web stack',
 });

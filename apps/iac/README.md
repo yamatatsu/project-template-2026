@@ -58,10 +58,11 @@ All defaults are overridable with `-c key=value`:
 | `stage`   | `dev`            | Stack-name prefix; `prod` enables deletion protection + RETAIN. |
 | `region`  | `ap-northeast-1` | Must be an Aurora DSQL region.                                  |
 | `account` | CLI default      | Target AWS account.                                             |
-| `apiAuth` | `false`          | `true` attaches the Cognito JWT authorizer to `/api/*`.         |
+
+The Cognito JWT authorizer is always attached to `/api/*`.
 
 ```sh
-cdk deploy --all -c stage=prod -c region=us-east-1 -c apiAuth=true
+cdk deploy --all -c stage=prod -c region=us-east-1
 ```
 
 ## Assumptions made (change if needed)
@@ -74,9 +75,9 @@ clarified interactively:
 2. **HTTP API (API Gateway v2)** over REST API — cheaper, lower latency.
 3. **`/api` prefix stripped at CloudFront** (a CloudFront Function), so the
    backend keeps serving root paths (`/tasks`). No `basePath` in Hono.
-4. **`apiAuth=false` by default**, so a fresh deploy is end-to-end functional.
-   Cognito (user pool + hosted-UI client + JWT authorizer) is fully provisioned;
-   flip `-c apiAuth=true` once the frontend sends `Authorization: Bearer <jwt>`.
+4. **`/api/*` is always protected by the Cognito JWT authorizer.** Cognito
+   (user pool + hosted-UI client + JWT authorizer) is fully provisioned; the
+   frontend must send `Authorization: Bearer <jwt>`.
 5. **No custom domain / ACM cert** — the default CloudFront domain is used.
 
 ## ⚠️ DSQL application-level follow-ups

@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url';
 
 import type { ICluster } from '@aws-cdk/aws-dsql-alpha';
 import { CfnOutput, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
-import { type IHttpRouteAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpJwtAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
@@ -23,8 +22,6 @@ const SPA_FALLBACK_FN = join(here, '../../../cloudfront/spa-fallback.js');
 export interface WebStackProps extends StackProps {
   /** Logical environment name (e.g. `dev`, `prod`). */
   readonly stage: string;
-  /** Attach the Cognito JWT authorizer to `/api/*` routes. */
-  readonly apiAuth: boolean;
   /** DSQL cluster from {@link DbStack}, for the IAM connect grant. */
   readonly dsqlCluster: ICluster;
 }
@@ -114,14 +111,12 @@ export class WebStack extends Stack {
       appUrl,
     });
 
-    // --- API routes (optionally protected by Cognito) ---------------------
-    const authorizer: IHttpRouteAuthorizer | undefined = props.apiAuth
-      ? new HttpJwtAuthorizer(
-          'JwtAuthorizer',
-          `https://cognito-idp.${this.region}.amazonaws.com/${cognito.userPool.userPoolId}`,
-          { jwtAudience: [cognito.userPoolClient.userPoolClientId] },
-        )
-      : undefined;
+    // --- API routes (always protected by the Cognito JWT authorizer) ------
+    const authorizer = new HttpJwtAuthorizer(
+      'JwtAuthorizer',
+      `https://cognito-idp.${this.region}.amazonaws.com/${cognito.userPool.userPoolId}`,
+      { jwtAudience: [cognito.userPoolClient.userPoolClientId] },
+    );
 
     api.addRoutes(authorizer);
 
@@ -141,6 +136,5 @@ export class WebStack extends Stack {
     new CfnOutput(this, 'SiteBucketName', { value: siteBucket.bucketName });
     new CfnOutput(this, 'UserPoolId', { value: cognito.userPool.userPoolId });
     new CfnOutput(this, 'UserPoolClientId', { value: cognito.userPoolClient.userPoolClientId });
-    new CfnOutput(this, 'ApiAuthEnabled', { value: String(props.apiAuth) });
   }
 }
