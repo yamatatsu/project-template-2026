@@ -61,7 +61,12 @@ export class Api extends Construct {
       },
     });
 
-    props.dsqlCluster.grantConnect(apiFn);
+    // Lambda は admin ロールで接続するため admin の connect 権限を付与する
+    // （packages/db/src/client.ts は DSQL_USER 未設定時に admin + admin トークンを使う。
+    // grant と接続ロールは必ず揃えること）。
+    // TODO: AWS は admin を日常運用に使わずカスタム DB ロール + dsql:DbConnect を推奨。
+    // 将来 app 用ロールを作成し DSQL_USER を渡したうえで grantConnect に切り替える。
+    props.dsqlCluster.grantConnectAdmin(apiFn);
 
     this.httpApi = new HttpApi(this, 'HttpApi', {
       description: `${props.stage} task API`,
