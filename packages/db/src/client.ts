@@ -13,18 +13,24 @@ import * as schema from './schema.ts';
  */
 function buildPoolConfig(): PoolConfig {
   const dsqlEndpoint = process.env.DSQL_ENDPOINT;
+  const databaseUrl = process.env.DATABASE_URL;
+  const dsqlRegion = process.env.DSQL_REGION;
+  const awsRegion = process.env.AWS_REGION;
+  const dsqlUser = process.env.DSQL_USER;
+  const dsqlDatabase = process.env.DSQL_DATABASE;
+
   if (!dsqlEndpoint) {
-    return { connectionString: process.env.DATABASE_URL };
+    return { connectionString: databaseUrl };
   }
 
-  const region = process.env.DSQL_REGION ?? process.env.AWS_REGION;
-  const user = process.env.DSQL_USER ?? 'admin';
+  const region = dsqlRegion ?? awsRegion;
+  const user = dsqlUser ?? 'admin';
 
   return {
     host: dsqlEndpoint,
     port: 5432,
     user,
-    database: process.env.DSQL_DATABASE ?? 'postgres',
+    database: dsqlDatabase ?? 'postgres',
     ssl: { rejectUnauthorized: true },
     // pg accepts an async provider; it is invoked for each new connection,
     // transparently refreshing the IAM auth token before it expires.
