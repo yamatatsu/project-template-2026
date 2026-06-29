@@ -28,13 +28,10 @@ export interface ApiProps {
  * {@link addRoutes} once the authorizer is known.
  */
 export class Api extends Construct {
-  /** Lambda-backed HTTP API. */
-  readonly httpApi: HttpApi;
   /** API Gateway host (`<id>.execute-api.<region>.amazonaws.com`). */
   readonly apiHost: string;
-  /** Public API endpoint URL. */
-  readonly apiEndpoint: string;
 
+  private readonly httpApi: HttpApi;
   private readonly integration: HttpLambdaIntegration;
 
   constructor(scope: Construct, id: string, props: ApiProps) {
@@ -70,7 +67,6 @@ export class Api extends Construct {
       description: `${props.stage} task API`,
     });
     this.apiHost = `${this.httpApi.apiId}.execute-api.${region}.amazonaws.com`;
-    this.apiEndpoint = this.httpApi.apiEndpoint;
     this.integration = new HttpLambdaIntegration('ApiIntegration', apiFn);
   }
 

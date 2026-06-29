@@ -20,10 +20,6 @@ export interface DbStackProps extends StackProps {
 export class DbStack extends Stack {
   /** The DSQL cluster resource. */
   readonly cluster: Cluster;
-  /** Cluster connection endpoint: `<id>.dsql.<region>.on.aws`. */
-  readonly clusterEndpoint: string;
-  /** Cluster ARN, for granting `dsql:DbConnect*` to consumers. */
-  readonly clusterArn: string;
 
   constructor(scope: Construct, id: string, props: DbStackProps) {
     super(scope, id, props);
@@ -36,8 +32,5 @@ export class DbStack extends Stack {
       deletionProtection: isProd,
       removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
     });
-
-    this.clusterEndpoint = this.cluster.clusterEndpoint;
-    this.clusterArn = this.cluster.clusterArn;
   }
 }

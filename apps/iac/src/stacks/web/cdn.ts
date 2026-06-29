@@ -31,10 +31,6 @@ export interface CdnProps {
  *  - Uploads a pre-built frontend (`apps/frontend/dist`) when present.
  */
 export class Cdn extends Construct {
-  /** The CloudFront distribution. */
-  readonly distribution: cloudfront.Distribution;
-  /** Private S3 bucket holding the static SPA assets. */
-  readonly siteBucket: Bucket;
   /** Public app URL (`https://<distribution-domain>`). */
   readonly appUrl: string;
 
@@ -44,7 +40,7 @@ export class Cdn extends Construct {
     const isProd = props.stage === 'prod';
 
     // --- Static site bucket ----------------------------------------------
-    this.siteBucket = new Bucket(this, 'SiteBucket', {
+    const siteBucket = new Bucket(this, 'SiteBucket', {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       encryption: BucketEncryption.S3_MANAGED,
       enforceSSL: true,
@@ -62,12 +58,12 @@ export class Cdn extends Construct {
       runtime: cloudfront.FunctionRuntime.JS_2_0,
     });
 
-    this.distribution = new cloudfront.Distribution(this, 'Distribution', {
+    const distribution = new cloudfront.Distribution(this, 'Distribution', {
       comment: `${props.stage} app (SPA + /api)`,
       defaultRootObject: 'index.html',
       priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
       defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessControl(this.siteBucket),
+        origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         functionAssociations: [
@@ -98,14 +94,14 @@ export class Cdn extends Construct {
       },
     });
 
-    this.appUrl = `https://${this.distribution.distributionDomainName}`;
+    this.appUrl = `https://${distribution.distributionDomainName}`;
 
     // --- Optional: upload a pre-built frontend ----------------------------
     if (existsSync(FRONTEND_DIST)) {
       new BucketDeployment(this, 'DeploySite', {
         sources: [Source.asset(FRONTEND_DIST)],
-        destinationBucket: this.siteBucket,
-        distribution: this.distribution,
+        destinationBucket: siteBucket,
+        distribution,
         distributionPaths: ['/*'],
       });
     }
