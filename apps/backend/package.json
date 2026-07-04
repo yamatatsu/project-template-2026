@@ -4,10 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./app": "./src/app.ts",
-    "./lambda": "./src/lambda.ts",
-    "./schema": "./src/tasks/schema.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env src/index.ts",
@@ -19,6 +16,7 @@
   "dependencies": {
     "@hono/node-server": "^1.13.0",
     "@hono/zod-validator": "^0.8.0",
+    "@icasu/backend-auth": "workspace:*",
     "@icasu/db": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.27",

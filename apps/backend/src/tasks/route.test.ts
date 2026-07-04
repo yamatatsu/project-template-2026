@@ -1,3 +1,4 @@
+import { Hono } from 'hono';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -17,9 +18,17 @@ vi.mock('@icasu/db/client', async () => {
   return { db };
 });
 
-const { app } = await import('../app.ts');
+const { createTasksRoute } = await import('./route.ts');
 const { db } = await import('@icasu/db/client');
 const { tasks } = await import('@icasu/db/schema');
+
+// The session middleware is an orthogonal concern (auth has its own tests in
+// @icasu/backend-auth); mount the router with a pass-through `requireSession`
+// so these tests focus on the tasks DB logic.
+const app = new Hono().route(
+  '/tasks',
+  createTasksRoute((_c, next) => next()),
+);
 
 const JSON_HEADERS = { 'content-type': 'application/json' };
 
