@@ -1,15 +1,14 @@
 /**
- * Auth configuration.
+ * 認証の設定。
  *
- * The BFF is implemented against the generic OIDC authorization-code + PKCE
- * flow, so the same code runs against Cognito (prod) and mock-oauth2-server
- * (local) — only the `AuthConfig` values differ.
+ * BFF は汎用の OIDC authorization-code + PKCE フローに対して実装しているため、同じコードが
+ * Cognito（本番）と mock-oauth2-server（ローカル）の両方で動く — 違うのは `AuthConfig` の
+ * 値だけ。
  *
- * The package never reads `process.env` on its own: the host builds an
- * `AuthConfig` (typically via `loadAuthConfigFromEnv`) and injects it through
- * `createAuth`. This makes the dependency explicit — the host cannot forget to
- * wire it (compile error) — and lets the host validate the whole config once,
- * at startup, instead of failing on the first request.
+ * このパッケージは自分では一切 `process.env` を読まない: ホストが `AuthConfig` を組み立て
+ * （通常は `loadAuthConfigFromEnv` 経由）、`createAuth` を通して注入する。これで依存が明示的
+ * になり — ホストは配線を忘れられない（コンパイルエラーになる）—、初回リクエストで失敗する
+ * のではなく起動時に設定全体を一度で検証できる。
  */
 export interface AuthConfig {
   readonly oidc: {
@@ -21,11 +20,11 @@ export interface AuthConfig {
     readonly clientSecret: string;
     readonly scopes: string;
   };
-  /** Redirect URI registered with the provider (BFF `/auth/callback`). */
+  /** プロバイダに登録済みの redirect URI（BFF の `/auth/callback`）。 */
   readonly redirectUri: string;
-  /** Logout URL template; `{redirect}` is replaced with the app base URL. */
+  /** ログアウト URL のテンプレート。`{redirect}` はアプリのベース URL に置換される。 */
   readonly logoutUrl: string;
-  /** Where the SPA lives; users land here after login/logout. */
+  /** SPA の場所。ログイン／ログアウト後にユーザーはここへ戻る。 */
   readonly appBaseUrl: string;
   readonly cookie: {
     readonly name: string;
@@ -34,18 +33,18 @@ export interface AuthConfig {
   };
   readonly dynamo: {
     readonly tableName: string;
-    /** Set for DynamoDB Local; unset (undefined) in production. */
+    /** DynamoDB Local 用に設定する。本番では未設定（undefined）。 */
     readonly endpoint: string | undefined;
     readonly region: string;
   };
 }
 
 /**
- * Build an `AuthConfig` from environment variables, validating up front.
+ * 環境変数から `AuthConfig` を組み立て、その場で検証する。
  *
- * Every missing required variable is collected and reported together, so the
- * host (which should call this at startup — see `apps/backend`) fails fast with
- * the complete list instead of one-var-at-a-time on the first request.
+ * 不足している必須変数はすべて集めてまとめて報告する。これによりホスト（起動時に呼ぶ想定 —
+ * `apps/backend` を参照）は、初回リクエストで1変数ずつ失敗するのではなく、完全な一覧付きで
+ * fail fast できる。
  */
 export function loadAuthConfigFromEnv(env: NodeJS.ProcessEnv = process.env): AuthConfig {
   const missing: string[] = [];

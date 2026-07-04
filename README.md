@@ -1,82 +1,82 @@
 # project-template-2026
 
-A TypeScript monorepo template: Hono backend on Node.js + React/Vite frontend,
-with end-to-end type safety via the Hono RPC client.
+TypeScript モノレポのテンプレート。Node.js 上の Hono バックエンドと React/Vite フロントエンドを、
+Hono RPC クライアントによるエンドツーエンドの型安全性でつなぐ。
 
-## Stack
+## 技術スタック
 
-| Area        | Choice                                              |
-| ----------- | --------------------------------------------------- |
-| Runtime     | Node.js v24 (native TypeScript type stripping)      |
-| Monorepo    | pnpm workspaces (`apps/*`, `packages/*`)            |
-| Package mgr | pnpm                                                |
-| Backend     | Hono on Node.js (`@hono/node-server`)               |
-| Frontend    | React + Vite + Tailwind v4 + shadcn/ui (Base UI)    |
-| Data layer  | Hono RPC client + TanStack Query (typed end-to-end) |
-| Lint/format | oxlint + oxfmt                                      |
-| Tests       | Vitest (both apps)                                  |
-| Hooks / CI  | husky + lint-staged · GitHub Actions                |
+| 領域           | 採用技術                                                           |
+| -------------- | ------------------------------------------------------------------ |
+| ランタイム     | Node.js v24（ネイティブの TypeScript 型ストリッピング）            |
+| モノレポ       | pnpm workspaces（`apps/*`, `packages/*`）                          |
+| パッケージ管理 | pnpm                                                               |
+| バックエンド   | Hono on Node.js（`@hono/node-server`）                             |
+| フロントエンド | React + Vite + Tailwind v4 + shadcn/ui（Base UI）                  |
+| データ層       | Hono RPC クライアント + TanStack Query（エンドツーエンドで型付け） |
+| Lint/format    | oxlint + oxfmt                                                     |
+| テスト         | Vitest（両アプリ）                                                 |
+| Hooks / CI     | husky + lint-staged · GitHub Actions                               |
 
-## Layout
+## 構成
 
 ```
 apps/
-  backend/   Hono API — GET /hello-world, exports AppType for RPC
-  frontend/  React app — shows the backend message via TanStack Query
-packages/    (reserved for shared packages)
+  backend/   Hono API — GET /hello-world を提供し、RPC 用に AppType を公開
+  frontend/  React アプリ — TanStack Query 経由でバックエンドのメッセージを表示
+packages/    （共有パッケージ用に予約）
 ```
 
-## Getting started
+## はじめ方
 
-The toolchain (Node.js v24 + pnpm v10) is pinned in `mise.toml`. With
-[mise](https://mise.jdx.dev) installed, run `mise install` to get both:
+ツールチェーン（Node.js v24 + pnpm v10）は `mise.toml` に固定してある。
+[mise](https://mise.jdx.dev) をインストール済みなら、`mise install` で両方が入る:
 
 ```bash
-mise install         # installs Node v24 + pnpm v10 from mise.toml
+mise install         # mise.toml から Node v24 + pnpm v10 をインストール
 pnpm install
-pnpm dev             # runs backend (:3001) and frontend (:5001) together
+pnpm dev             # バックエンド (:3001) とフロントエンド (:5001) を同時起動
 ```
 
-Not using mise? Just ensure Node.js v24+ (see `.node-version`) and pnpm v10 are
-on your PATH.
+mise を使わない場合は、Node.js v24 以上（`.node-version` を参照）と pnpm v10 が
+PATH にあることを確認すればよい。
 
-The backend runs `.ts` directly on Node.js via native type stripping — no build
-step is needed.
+バックエンドはネイティブの型ストリッピングにより `.ts` を Node.js で直接実行する —
+ビルドステップは不要。
 
-Open http://localhost:5001 — the page fetches `hello world` from the backend
-through the typed RPC client. Vite proxies `/api/*` to the backend in dev.
+http://localhost:5001 を開くと、型付き RPC クライアント経由でバックエンドから
+`hello world` を取得して表示する。開発時は Vite が `/api/*` をバックエンドへプロキシする。
 
-## Scripts (run from the repo root)
+## スクリプト（リポジトリルートから実行）
 
-| Command             | Description                     |
-| ------------------- | ------------------------------- |
-| `pnpm dev`          | Start both apps                 |
-| `pnpm dev:backend`  | Backend only                    |
-| `pnpm dev:frontend` | Frontend only                   |
-| `pnpm build`        | Build both apps                 |
-| `pnpm test`         | Run all tests                   |
-| `pnpm typecheck`    | Type-check all workspaces       |
-| `pnpm lint`         | oxlint                          |
-| `pnpm format`       | oxfmt (write)                   |
-| `pnpm format:check` | oxfmt (check only — used in CI) |
+| コマンド            | 説明                              |
+| ------------------- | --------------------------------- |
+| `pnpm dev`          | 両アプリを起動                    |
+| `pnpm dev:backend`  | バックエンドのみ                  |
+| `pnpm dev:frontend` | フロントエンドのみ                |
+| `pnpm build`        | 両アプリをビルド                  |
+| `pnpm test`         | 全テストを実行                    |
+| `pnpm typecheck`    | 全ワークスペースを型チェック      |
+| `pnpm lint`         | oxlint                            |
+| `pnpm format`       | oxfmt（書き込み）                 |
+| `pnpm format:check` | oxfmt（チェックのみ — CI で使用） |
 
-## Type-safe API calls
+## 型安全な API 呼び出し
 
-The backend exports its app type:
+バックエンドはアプリの型を公開する:
 
 ```ts
 // apps/backend/src/app.ts
 export type AppType = typeof app;
 ```
 
-The frontend consumes it through the Hono RPC client (`apps/frontend/src/lib/api.ts`),
-so routes and responses are fully typed with autocomplete.
+フロントエンドはこれを Hono RPC クライアント（`apps/frontend/src/lib/api.ts`）経由で
+取り込むため、ルートとレスポンスが完全に型付けされ、補完も効く。
 
-## Adding shadcn components
+## shadcn コンポーネントの追加
 
 ```bash
 cd apps/frontend
 pnpm dlx shadcn@latest add <component>
 ```
 
-Components use **Base UI** primitives (configured in `components.json`).
+コンポーネントは **Base UI** プリミティブを使う（`components.json` で設定済み）。

@@ -1,16 +1,16 @@
 import { type AuthConfig } from './libs/config.ts';
 /**
- * `@icasu/backend-auth` — the BFF (Backend-For-Frontend) auth feature.
+ * `@icasu/backend-auth` — BFF（Backend-For-Frontend）認証機能。
  *
- * `createAuth(config)` builds a self-contained set of BFF auth pieces from an
- * injected `AuthConfig`:
- *  - `route`: a Hono app implementing the OIDC authorization-code + PKCE flow
- *    (login / callback / logout / me), which the host mounts under `/auth`;
- *  - `requireSession`: middleware that protects the host's own routes.
+ * `createAuth(config)` は注入された `AuthConfig` から、自己完結した BFF 認証部品一式を
+ * 組み立てる:
+ *  - `route`: OIDC authorization-code + PKCE フロー（login / callback / logout / me）を
+ *    実装する Hono app。ホストが `/auth` にマウントする;
+ *  - `requireSession`: ホスト自身のルートを保護するミドルウェア。
  *
- * The config is injected (not read from `process.env` inside the package) so
- * the wiring is explicit and type-checked, and the host can validate it once at
- * startup via `loadAuthConfigFromEnv` — see `apps/backend`.
+ * 設定は注入で受け取る（パッケージ内で `process.env` を読まない）。これにより配線が明示的
+ * かつ型チェック可能になり、ホストは起動時に `loadAuthConfigFromEnv` で一括検証できる —
+ * `apps/backend` を参照。
  */
 import { createCookies } from './libs/cookie.ts';
 import { createIdTokenVerifier } from './libs/jwks.ts';
@@ -22,7 +22,7 @@ import { createAuthRoute } from './route.ts';
 export { type AuthConfig, loadAuthConfigFromEnv } from './libs/config.ts';
 export { type AuthEnv, type RequireSession, type SessionContext } from './middleware.ts';
 
-/** Wire the BFF auth pieces from an injected config. */
+/** 注入された設定から BFF 認証部品を配線する。 */
 export function createAuth(config: AuthConfig) {
   const cookies = createCookies(config.cookie);
   const store = createSessionStore(config.dynamo);

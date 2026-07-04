@@ -4,19 +4,19 @@ import { cors } from 'hono/cors';
 
 import { createTasksRoute } from './tasks/route.ts';
 
-/** Everything the app needs to be constructed. Built once at startup. */
+/** アプリの構築に必要なものすべて。起動時に一度だけ組み立てる。 */
 export interface AppConfig {
   auth: AuthConfig;
 }
 
 /**
- * Build the Hono application.
+ * Hono アプリケーションを構築する。
  *
- * Routes are defined with method chaining so that the inferred type (`AppType`)
- * carries full route/response information to the frontend via the Hono RPC client.
+ * ルートをメソッドチェーンで定義しているのは、推論型（`AppType`）が Hono RPC クライアント
+ * 経由でルート・レスポンスの完全な情報をフロントエンドへ運べるようにするため。
  *
- * `/auth/*` are the BFF endpoints (login/callback/logout/me). `/tasks` and any
- * other API routes are protected by the session middleware injected into them.
+ * `/auth/*` は BFF のエンドポイント（login/callback/logout/me）。`/tasks` をはじめとする
+ * API ルートは、注入されたセッションミドルウェアで保護される。
  */
 export function createApp(config: AppConfig) {
   const auth = createAuth(config.auth);

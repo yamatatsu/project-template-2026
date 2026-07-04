@@ -8,15 +8,14 @@ import { Hono } from 'hono';
 import { createTaskSchema, taskIdParamSchema, updateTaskSchema } from './schema.ts';
 
 /**
- * Build the Tasks CRUDL router.
+ * Tasks の CRUDL ルーターを構築する。
  *
- * Routes are defined with method chaining so the inferred type flows to the
- * frontend via the Hono RPC client. Do not split this chain into intermediate
- * variables, or the RPC type information will be lost.
+ * ルートをメソッドチェーンで定義しているのは、推論型が Hono RPC クライアント経由で
+ * フロントエンドへ流れるようにするため。このチェーンを途中変数に分割してはならない。
+ * 分割すると RPC の型情報が失われる。
  *
- * `requireSession` is injected by the host: it guards every route by
- * authenticating the BFF session cookie (the API Gateway JWT authorizer was
- * removed for the BFF pattern).
+ * `requireSession` はホスト側から注入される。BFF のセッション Cookie を認証して全ルートを
+ * 保護する（API Gateway の JWT オーソライザは BFF パターン移行に伴い撤去済み）。
  */
 export function createTasksRoute(requireSession: RequireSession) {
   return new Hono<AuthEnv>()

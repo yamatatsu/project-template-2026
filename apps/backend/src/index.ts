@@ -5,8 +5,8 @@ import { type AppType, createApp } from './app.ts';
 
 export type { AppType };
 
-// Validate the whole auth config once, at startup: a missing env var crashes
-// here (with the full list) instead of on the first authenticated request.
+// auth 設定全体を起動時に一括検証する。env の不足は最初の認証リクエスト時ではなく、
+// ここで（不足の一覧付きで）クラッシュさせる。
 const app = createApp({ auth: loadAuthConfigFromEnv() });
 export { app };
 

@@ -1,36 +1,36 @@
 import { createHash, randomBytes } from 'node:crypto';
 
 /**
- * PKCE / opaque-token helpers.
+ * PKCE / 不透明トークンのヘルパー。
  *
- * All values are 32 random bytes encoded as base64url. The PKCE challenge is
- * the S256 hash of the verifier, per RFC 7636.
+ * すべての値は 32 バイトの乱数を base64url でエンコードしたもの。PKCE の challenge は
+ * RFC 7636 に従い verifier の S256 ハッシュ。
  */
 function randomToken(): string {
   return randomBytes(32).toString('base64url');
 }
 
-/** PKCE `code_verifier`. */
+/** PKCE の `code_verifier`。 */
 export function generateVerifier(): string {
   return randomToken();
 }
 
-/** PKCE `code_challenge` (S256) derived from a verifier. */
+/** verifier から導出した PKCE の `code_challenge`（S256）。 */
 export function challengeFromVerifier(verifier: string): string {
   return createHash('sha256').update(verifier).digest('base64url');
 }
 
-/** OAuth `state` (CSRF protection). */
+/** OAuth の `state`（CSRF 対策）。 */
 export function generateState(): string {
   return randomToken();
 }
 
-/** OIDC `nonce` (replay protection, bound into the id_token). */
+/** OIDC の `nonce`（リプレイ対策。id_token に紐付けられる）。 */
 export function generateNonce(): string {
   return randomToken();
 }
 
-/** Opaque session id stored in the cookie; the only token the browser ever sees. */
+/** Cookie に保存する不透明な session id。ブラウザが目にする唯一のトークン。 */
 export function generateSessionId(): string {
   return randomToken();
 }

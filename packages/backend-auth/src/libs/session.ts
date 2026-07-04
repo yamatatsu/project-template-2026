@@ -9,14 +9,14 @@ import {
 import type { AuthConfig } from './config.ts';
 
 /**
- * DynamoDB-backed session & transient-state store.
+ * DynamoDB を使ったセッション & 一時 state ストア。
  *
- * Single table, namespaced by `pk`:
- *  - `sess#<sessionId>` — the user's tokens (server-side only).
- *  - `state#<state>`    — short-lived PKCE/nonce data during the login redirect.
+ * 単一テーブルを `pk` で名前空間分けする:
+ *  - `sess#<sessionId>` — ユーザーのトークン（サーバ側のみ）。
+ *  - `state#<state>`    — ログインリダイレクト中だけ生きる PKCE/nonce データ。
  *
- * `ttl` (epoch seconds) drives DynamoDB TTL. DynamoDB Local does not actually
- * expire items, so reads also check `ttl` explicitly.
+ * `ttl`（epoch 秒）が DynamoDB TTL を駆動する。DynamoDB Local は実際にはアイテムを失効
+ * させないため、読み取り時にも `ttl` を明示的にチェックする。
  */
 const STATE_TTL_SECONDS = 10 * 60;
 const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -31,7 +31,7 @@ export interface SessionData {
   readonly accessToken: string;
   readonly refreshToken: string | undefined;
   readonly idToken: string;
-  /** Epoch seconds at which the access token expires. */
+  /** アクセストークンが失効する時刻（epoch 秒）。 */
   readonly accessTokenExpiresAt: number;
   readonly userSub: string;
   readonly email: string | undefined;
@@ -39,7 +39,7 @@ export interface SessionData {
 
 export interface SessionStore {
   saveState(state: string, data: PendingAuth): Promise<void>;
-  /** Read the pending-auth state and delete it (one-time use). */
+  /** 認証途中の state を読み取り、同時に削除する（ワンタイム利用）。 */
   consumeState(state: string): Promise<PendingAuth | undefined>;
   saveSession(sessionId: string, data: SessionData): Promise<void>;
   getSession(sessionId: string): Promise<SessionData | undefined>;
@@ -50,7 +50,7 @@ function nowSeconds(): number {
   return Math.floor(Date.now() / 1000);
 }
 
-/** Build the session store, opening a single DynamoDB document client. */
+/** セッションストアを組み立てる。DynamoDB document client は1つだけ開く。 */
 export function createSessionStore(cfg: AuthConfig['dynamo']): SessionStore {
   const client = new DynamoDBClient({
     region: cfg.region,

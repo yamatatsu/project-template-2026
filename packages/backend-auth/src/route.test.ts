@@ -8,15 +8,14 @@ import { createRequireSession } from './middleware.ts';
 import { createAuthRoute } from './route.ts';
 
 /**
- * BFF auth-flow spec.
+ * BFF 認証フローの仕様。
  *
- * Drives the Hono app returned by `createAuthRoute` with real cookies to
- * describe the OIDC authorization-code + PKCE flow end to end. Dependency
- * injection replaces the two external boundaries — everything else runs for
- * real (PKCE, state, cookie signing, redirect wiring, refresh logic):
+ * `createAuthRoute` が返す Hono app を実 Cookie で駆動し、OIDC authorization-code + PKCE
+ * フローをエンドツーエンドで記述する。DI で差し替えるのは2つの外部境界のみで、それ以外
+ * （PKCE・state・Cookie 署名・リダイレクトの配線・リフレッシュのロジック）は実物を動かす:
  *
- *  - the session store → an in-memory Map instead of DynamoDB,
- *  - the token endpoint / id_token verification → vi.fn() stubs.
+ *  - セッションストア → DynamoDB の代わりに in-memory の Map、
+ *  - トークンエンドポイント / id_token 検証 → vi.fn() のスタブ。
  */
 
 const ENV: Record<string, string> = {
@@ -78,21 +77,21 @@ beforeEach(() => {
   authRoute = createAuthRoute({ cookies, store, oidc, verifier, requireSession });
 });
 
-/** Take the `name=value` pair from a Set-Cookie response header. */
+/** レスポンスの Set-Cookie ヘッダから `name=value` の組を取り出す。 */
 function cookieFrom(res: Response): string {
   const setCookie = res.headers.get('set-cookie');
   if (!setCookie) throw new Error('expected a Set-Cookie header');
   return setCookie.split(';')[0]!;
 }
 
-/** Start /login and return the `state` bound into the authorize redirect. */
+/** /login を開始し、authorize リダイレクトに紐付いた `state` を返す。 */
 async function startLogin(returnTo = '/'): Promise<string> {
   const res = await authRoute.request(`/login?returnTo=${encodeURIComponent(returnTo)}`);
   const location = new URL(res.headers.get('location')!);
   return location.searchParams.get('state')!;
 }
 
-/** Complete the login flow and return the signed session cookie. */
+/** ログインフローを完了し、署名付きセッション Cookie を返す。 */
 async function authenticate(
   claims: { sub: string; email?: string },
   tokens: Partial<{
@@ -195,7 +194,7 @@ describe('GET /me', () => {
   });
 
   it('transparently refreshes an access token that is about to expire', async () => {
-    // expiresIn: 0 → the stored access token is already within the refresh margin.
+    // expiresIn: 0 → 保存済みのアクセストークンは最初からリフレッシュマージン内。
     const cookie = await authenticate(
       { sub: 'user-2' },
       { refreshToken: 'refresh-1', expiresIn: 0 },
@@ -224,7 +223,7 @@ describe('GET /me', () => {
     const res = await authRoute.request('/me', { headers: { cookie } });
 
     expect(res.status).toBe(401);
-    // The session is gone: even a non-expiring retry stays unauthenticated.
+    // セッションは消えている: 失効と無関係なリトライでも未認証のまま。
     const retry = await authRoute.request('/me', { headers: { cookie } });
     expect(retry.status).toBe(401);
   });
@@ -238,7 +237,7 @@ describe('GET /logout', () => {
 
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toContain('/default/endsession');
-    // After logout the same cookie no longer authenticates.
+    // ログアウト後は同じ Cookie ではもう認証されない。
     const after = await authRoute.request('/me', { headers: { cookie } });
     expect(after.status).toBe(401);
   });

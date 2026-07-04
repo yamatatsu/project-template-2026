@@ -13,7 +13,7 @@ import {
 import type { SessionStore } from './libs/session.ts';
 import { type AuthEnv, type RequireSession } from './middleware.ts';
 
-/** Dependencies the auth routes need. */
+/** 認証ルートが必要とする依存。 */
 export interface AuthRouteDeps {
   cookies: Cookies;
   store: SessionStore;
@@ -23,11 +23,11 @@ export interface AuthRouteDeps {
 }
 
 /**
- * Build the BFF auth routes.
+ * BFF の認証ルートを組み立てる。
  *
- * Defined with method chaining so the inferred type flows to the frontend via
- * the Hono RPC client. Only `/me` is meant to be called from the RPC client;
- * `/login`, `/callback`, `/logout` are full-page redirects.
+ * 推論された型が Hono RPC クライアント経由でフロントエンドに流れるよう、メソッドチェーンで
+ * 定義する。RPC クライアントから呼ぶ想定なのは `/me` のみで、`/login`・`/callback`・
+ * `/logout` はページ全体のリダイレクト。
  */
 export function createAuthRoute(deps: AuthRouteDeps) {
   const { cookies, store, oidc, verifier, requireSession } = deps;
@@ -72,7 +72,7 @@ export function createAuthRoute(deps: AuthRouteDeps) {
       });
       await cookies.setSessionCookie(c, sessionId);
 
-      // Only allow same-origin paths as the post-login destination.
+      // ログイン後の遷移先として許可するのは同一オリジンのパスのみ。
       const dest = pending.returnTo.startsWith('/') ? pending.returnTo : '/';
       return c.redirect(dest);
     })

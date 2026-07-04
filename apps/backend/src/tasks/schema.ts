@@ -1,7 +1,7 @@
 import { taskPriority, taskStatus } from '@icasu/db/schema';
 import { z } from 'zod';
 
-/** Reuse the pgEnum values so enum membership is defined in a single place. */
+/** enum のメンバー定義が一箇所に集まるよう、pgEnum の値を再利用する。 */
 export const taskStatusEnum = z.enum(taskStatus.enumValues);
 export const taskPriorityEnum = z.enum(taskPriority.enumValues);
 

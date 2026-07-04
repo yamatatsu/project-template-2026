@@ -5,36 +5,35 @@ import type { Cookies } from './libs/cookie.ts';
 import { type OidcClient, TokenError } from './libs/oidc.ts';
 import type { SessionData, SessionStore } from './libs/session.ts';
 
-/** Authenticated user info exposed to handlers via `c.get('session')`. */
+/** `c.get('session')` でハンドラに公開する認証済みユーザー情報。 */
 export interface SessionContext {
   readonly sessionId: string;
   readonly userSub: string;
   readonly email: string | undefined;
 }
 
-/** Hono env that carries the session for protected routes. */
+/** 保護ルート向けにセッションを運ぶ Hono の env。 */
 export interface AuthEnv {
   Variables: { session: SessionContext };
 }
 
-/** The middleware `createRequireSession` produces; also the type hosts inject. */
+/** `createRequireSession` が生成するミドルウェア。ホストが注入する型でもある。 */
 export type RequireSession = MiddlewareHandler<AuthEnv>;
 
-/** Dependencies `requireSession` needs. */
+/** `requireSession` が必要とする依存。 */
 export interface RequireSessionDeps {
   cookies: Cookies;
   store: SessionStore;
   oidc: Pick<OidcClient, 'refreshTokens'>;
 }
 
-/** Margin (seconds) before real expiry at which we proactively refresh. */
+/** 実際の失効よりどれだけ手前（秒）で先回りしてリフレッシュするかのマージン。 */
 const REFRESH_MARGIN_SECONDS = 60;
 
 /**
- * Build the middleware that protects a route group: require a valid session
- * cookie, transparently refreshing the access token (with rotation) when it is
- * about to expire. Responds 401 `{ error: 'unauthenticated' }` when there is no
- * usable session.
+ * ルートグループを保護するミドルウェアを組み立てる: 有効なセッション Cookie を要求し、
+ * アクセストークンが失効間近なら（ローテーション込みで）透過的にリフレッシュする。
+ * 使えるセッションが無ければ 401 `{ error: 'unauthenticated' }` を返す。
  */
 export function createRequireSession(deps: RequireSessionDeps): RequireSession {
   const { cookies, store, oidc } = deps;
@@ -58,7 +57,7 @@ export function createRequireSession(deps: RequireSessionDeps): RequireSession {
       const updated: SessionData = {
         ...session,
         accessToken: tokens.accessToken,
-        // Refresh-token rotation: keep the new one if the provider issued it.
+        // リフレッシュトークンのローテーション: プロバイダが新しいものを発行したらそれを保持する。
         refreshToken: tokens.refreshToken ?? session.refreshToken,
         idToken: tokens.idToken,
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expiresIn,

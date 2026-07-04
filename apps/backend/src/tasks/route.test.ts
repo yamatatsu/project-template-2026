@@ -2,12 +2,11 @@ import { Hono } from 'hono';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 /**
- * Replace the real Postgres-backed `db` client with an in-memory PGlite
- * instance so route handlers can run without a live database.
+ * 実 Postgres バックエンドの `db` クライアントをインメモリの PGlite インスタンスに
+ * 置き換え、ルートハンドラを生きた DB 無しで動かせるようにする。
  *
- * The factory is async and creates a singleton: `route.ts` imports `db` from
- * `@icasu/db/client`, and so does this test, so both resolve to the *same*
- * mocked instance.
+ * ファクトリは async でシングルトンを生成する。`route.ts` もこのテストも `@icasu/db/client`
+ * から `db` を import するため、両者は*同一の*モックインスタンスに解決される。
  */
 vi.mock('@icasu/db/client', async () => {
   const { PGlite } = await import('@electric-sql/pglite');
@@ -22,9 +21,9 @@ const { createTasksRoute } = await import('./route.ts');
 const { db } = await import('@icasu/db/client');
 const { tasks } = await import('@icasu/db/schema');
 
-// The session middleware is an orthogonal concern (auth has its own tests in
-// @icasu/backend-auth); mount the router with a pass-through `requireSession`
-// so these tests focus on the tasks DB logic.
+// セッションミドルウェアは直交する関心事（認証のテストは @icasu/backend-auth 側にある）。
+// パススルーの `requireSession` でルーターをマウントし、このテストは tasks の DB ロジックに
+// 集中させる。
 const app = new Hono().route(
   '/tasks',
   createTasksRoute((_c, next) => next()),
@@ -32,7 +31,7 @@ const app = new Hono().route(
 
 const JSON_HEADERS = { 'content-type': 'application/json' };
 
-/** Helper: POST a task and return the parsed JSON body. */
+/** ヘルパー: task を POST し、パース済みの JSON ボディを返す。 */
 async function createTask(body: Record<string, unknown>) {
   const res = await app.request('/tasks', {
     method: 'POST',
@@ -112,7 +111,7 @@ describe('POST /tasks', () => {
 describe('GET /tasks', () => {
   it('returns all tasks ordered by createdAt descending', async () => {
     const { json: first } = await createTask({ title: 'first' });
-    // Small delay so createdAt timestamps differ deterministically.
+    // createdAt のタイムスタンプが確実に異なる値になるよう、わずかに待つ。
     await new Promise((resolve) => setTimeout(resolve, 5));
     const { json: second } = await createTask({ title: 'second' });
 
@@ -121,7 +120,7 @@ describe('GET /tasks', () => {
 
     const rows = (await res.json()) as Array<Record<string, unknown>>;
     expect(rows).toHaveLength(2);
-    // Newest first.
+    // 新しいものが先頭。
     expect(rows.map((row) => row.id)).toEqual([second.id, first.id]);
   });
 
@@ -170,7 +169,7 @@ describe('PUT /tasks/:id', () => {
     const updated = (await res.json()) as Record<string, unknown>;
     expect(updated.id).toBe(created.id);
     expect(updated.status).toBe('done');
-    // Untouched field preserved.
+    // 触れていないフィールドは保持される。
     expect(updated.title).toBe('todo task');
   });
 

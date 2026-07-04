@@ -4,12 +4,13 @@ import { Pool, type PoolConfig } from 'pg';
 import * as schema from './schema.ts';
 
 /**
- * Builds the pg pool configuration.
+ * pg のプール設定を組み立てる。
  *
- * - Local / container Postgres: set `DATABASE_URL` (default).
- * - Aurora DSQL: set `DSQL_ENDPOINT`. DSQL has no static password, so every
- *   new connection authenticates with a freshly-signed, short-lived IAM token.
- *   The `@aws-sdk/dsql-signer` import is lazy so local dev never loads it.
+ * - ローカル / コンテナの Postgres: `DATABASE_URL` を設定する（デフォルト）。
+ * - Aurora DSQL: `DSQL_ENDPOINT` を設定する。DSQL には固定パスワードが無いため、
+ *   新規接続のたびに署名し直した短命の IAM トークンで認証する。
+ *   `@aws-sdk/dsql-signer` の import を遅延させているのは、ローカル開発で一切ロード
+ *   させないため。
  */
 function buildPoolConfig(): PoolConfig {
   const dsqlEndpoint = process.env.DSQL_ENDPOINT;
@@ -32,8 +33,8 @@ function buildPoolConfig(): PoolConfig {
     user,
     database: dsqlDatabase ?? 'postgres',
     ssl: { rejectUnauthorized: true },
-    // pg accepts an async provider; it is invoked for each new connection,
-    // transparently refreshing the IAM auth token before it expires.
+    // pg は async なプロバイダを受け付ける。新規接続のたびに呼ばれるため、IAM 認証
+    // トークンは期限切れ前に透過的に更新される。
     password: async () => {
       const { DsqlSigner } = await import('@aws-sdk/dsql-signer');
       const signer = new DsqlSigner({ hostname: dsqlEndpoint, region });

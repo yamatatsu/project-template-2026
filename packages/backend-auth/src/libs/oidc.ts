@@ -1,21 +1,21 @@
 import type { AuthConfig } from './config.ts';
 
-/** Tokens returned by the provider's token endpoint. */
+/** プロバイダのトークンエンドポイントが返すトークン一式。 */
 export interface TokenSet {
   readonly accessToken: string;
   readonly refreshToken: string | undefined;
   readonly idToken: string;
-  /** Access-token lifetime in seconds. */
+  /** アクセストークンの有効期間（秒）。 */
   readonly expiresIn: number;
 }
 
-/** Error from the token endpoint; `isInvalidGrant` flags an unusable refresh token. */
+/** トークンエンドポイントのエラー。`isInvalidGrant` はリフレッシュトークンが使えないことを示す。 */
 export class TokenError extends Error {
   readonly status: number;
   readonly body: string;
 
-  // Note: explicit field assignment (not constructor parameter properties),
-  // since Node's strip-only TypeScript execution does not support the latter.
+  // 注: constructor parameter properties ではなく明示的なフィールド代入にしている。
+  // Node の strip-only な TypeScript 実行が前者をサポートしないため。
   constructor(status: number, body: string) {
     super(`Token endpoint error (${status}): ${body}`);
     this.name = 'TokenError';
@@ -29,13 +29,13 @@ export class TokenError extends Error {
 }
 
 export interface OidcClient {
-  /** Build the provider `/authorize` redirect URL (authorization code + PKCE). */
+  /** プロバイダの `/authorize` リダイレクト URL を組み立てる（authorization code + PKCE）。 */
   buildAuthorizeUrl(params: { state: string; nonce: string; codeChallenge: string }): string;
-  /** Exchange an authorization code for tokens (with the PKCE verifier). */
+  /** authorization code をトークンに交換する（PKCE verifier 付き）。 */
   exchangeCode(code: string, codeVerifier: string): Promise<TokenSet>;
-  /** Exchange a refresh token for a fresh token set. */
+  /** リフレッシュトークンを新しいトークン一式に交換する。 */
   refreshTokens(refreshToken: string): Promise<TokenSet>;
-  /** Build the provider logout URL (`{redirect}` replaced with the app base URL). */
+  /** プロバイダのログアウト URL を組み立てる（`{redirect}` はアプリのベース URL に置換）。 */
   buildLogoutUrl(): string;
 }
 
@@ -46,12 +46,12 @@ interface TokenResponse {
   expires_in: number;
 }
 
-/** Build the OIDC client bound to the provider config. */
+/** プロバイダ設定に束縛された OIDC クライアントを組み立てる。 */
 export function createOidcClient(cfg: AuthConfig): OidcClient {
   const { oidc } = cfg;
 
   async function tokenRequest(body: URLSearchParams): Promise<TokenSet> {
-    // Confidential client: authenticate with HTTP Basic (client_id:client_secret).
+    // Confidential client: HTTP Basic（client_id:client_secret）で認証する。
     const basic = Buffer.from(`${oidc.clientId}:${oidc.clientSecret}`).toString('base64');
     const res = await fetch(oidc.tokenUrl, {
       method: 'POST',

@@ -69,7 +69,7 @@ describe('loadAuthConfigFromEnv', () => {
   it('parses a complete environment', () => {
     expect(config.oidc.issuer).toBe('http://localhost:8080/default');
     expect(config.cookie.name).toBe('sid');
-    // COOKIE_SECURE defaults to true when unset.
+    // COOKIE_SECURE 未設定時のデフォルトは true。
     expect(config.cookie.secure).toBe(true);
     expect(config.dynamo.region).toBe('ap-northeast-1');
   });

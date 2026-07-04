@@ -75,6 +75,8 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 
 パッケージ別 `CLAUDE.md`:
 
+- **バックエンド（`apps/backend`）**: Hono の BFF。合成点・公開面（`AppType` 一本）・入力検証の
+  方針は [`apps/backend/CLAUDE.md`](apps/backend/CLAUDE.md)。
 - **フロントエンド（`apps/frontend`）**: Feature-Sliced Design (FSD v2.1) に従う。詳細は
   [`apps/frontend/CLAUDE.md`](apps/frontend/CLAUDE.md)。
 - **インフラ（`apps/iac`）**: AWS CDK (TypeScript)。設定は環境変数 `STAGE` のみ・CDK context 不使用、

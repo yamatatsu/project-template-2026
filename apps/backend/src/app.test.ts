@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import { createApp } from './app.ts';
 
-// A complete auth config so `createApp` can wire the BFF pieces. Building them
-// is side-effect-free (no network), so this suffices for the non-auth routes.
+// `createApp` が BFF の部品を組み立てられるよう、完全な auth 設定を用意する。組み立て自体は
+// 副作用なし（ネットワークアクセスなし）なので、認証以外のルートのテストにはこれで足りる。
 const TEST_ENV: Record<string, string> = {
   OIDC_ISSUER: 'http://localhost:8080/default',
   OIDC_AUTHORIZE_URL: 'http://localhost:8080/default/authorize',

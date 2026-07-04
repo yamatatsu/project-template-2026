@@ -4,13 +4,13 @@ import type { AuthConfig } from './config.ts';
 
 export interface IdTokenVerifier {
   /**
-   * Verify an id_token against the provider's JWKS, issuer, and audience, then
-   * check the bound nonce. Throws on any mismatch.
+   * id_token をプロバイダの JWKS・issuer・audience に対して検証し、続けて紐付けられた
+   * nonce を確認する。いずれかが一致しなければ throw する。
    */
   verifyIdToken(idToken: string, expectedNonce: string): Promise<JWTPayload>;
 }
 
-/** Build the id_token verifier, caching the provider's remote JWKS. */
+/** id_token の verifier を組み立てる。プロバイダのリモート JWKS はキャッシュする。 */
 export function createIdTokenVerifier(cfg: AuthConfig['oidc']): IdTokenVerifier {
   const jwks = createRemoteJWKSet(new URL(cfg.jwksUrl));
 

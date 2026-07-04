@@ -6,13 +6,12 @@ import type { SessionData } from './libs/session.ts';
 import { type AuthEnv, createRequireSession } from './middleware.ts';
 
 /**
- * `requireSession` spec.
+ * `requireSession` の仕様。
  *
- * Unlike `route.test.ts` (which drives the whole BFF flow with real cookies),
- * this isolates the middleware by injecting fakes for its three dependencies —
- * the cookie helpers, the session store, and the token endpoint — so each
- * branch (no cookie / no session / valid / refresh-with-rotation /
- * invalidation) can be asserted directly, including which side effects fire.
+ * BFF フロー全体を実 Cookie で駆動する `route.test.ts` と違い、こちらは3つの依存 —
+ * cookie ヘルパー・セッションストア・トークンエンドポイント — にフェイクを注入して
+ * ミドルウェアを分離し、各分岐（Cookie 無し / セッション無し / 有効 / リフレッシュ＋
+ * ローテーション / 無効化）を、どの副作用が発火したかまで直接検証できるようにする。
  */
 
 let cookies: {
@@ -46,7 +45,7 @@ beforeEach(() => {
   refreshTokens = vi.fn();
 
   const requireSession = createRequireSession({ cookies, store, oidc: { refreshTokens } });
-  // A minimal protected app: the handler echoes the session the middleware set.
+  // 最小構成の保護アプリ: ハンドラはミドルウェアがセットしたセッションをそのまま返す。
   app = new Hono<AuthEnv>()
     .use('*', requireSession)
     .get('/protected', (c) => c.json(c.get('session')));
@@ -114,7 +113,7 @@ describe('when the session is valid and not near expiry', () => {
 describe('when the access token is within the refresh margin', () => {
   beforeEach(() => {
     cookies.readSessionCookie.mockResolvedValue('sess-1');
-    // 30s of life left → inside the 60s refresh margin.
+    // 残り寿命 30 秒 → 60 秒のリフレッシュマージン内。
     store.getSession.mockResolvedValue(makeSession({ accessTokenExpiresAt: nowSeconds() + 30 }));
   });
 
@@ -139,7 +138,7 @@ describe('when the access token is within the refresh margin', () => {
         userSub: 'user-1',
       }),
     );
-    // The refreshed access token is good for ~1h from now.
+    // リフレッシュ後のアクセストークンは今からおよそ1時間有効。
     const saved = store.saveSession.mock.calls[0]![1] as SessionData;
     expect(saved.accessTokenExpiresAt).toBeGreaterThan(nowSeconds() + 3000);
   });
