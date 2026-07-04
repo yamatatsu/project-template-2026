@@ -10,7 +10,7 @@ import {
 import { type Task, TaskPriorityBadge, TaskStatusBadge, taskListQuery } from '@/entities/task';
 import { DeleteTaskButton } from '@/features/delete-task';
 import { formatDateTime } from '@/shared/lib/utils';
-import { Button } from '@/shared/ui/button';
+import { ButtonLink } from '@/shared/ui/button-link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table';
 
 const columnHelper = createColumnHelper<Task>();
@@ -49,15 +49,14 @@ const columns = [
     header: '操作',
     cell: (info) => (
       <div className="flex justify-end gap-2">
-        <Button
+        <ButtonLink
+          to="/tasks/$taskId/edit"
+          params={{ taskId: info.row.original.id }}
           variant="outline"
           size="sm"
-          render={
-            <Link to="/tasks/$taskId/edit" params={{ taskId: info.row.original.id }}>
-              編集
-            </Link>
-          }
-        />
+        >
+          編集
+        </ButtonLink>
         <DeleteTaskButton task={info.row.original} />
       </div>
     ),

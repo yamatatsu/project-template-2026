@@ -4,11 +4,11 @@ import { render } from '@testing-library/react';
 import { routeTree } from '@/app/router';
 
 /**
- * Render the real app route tree at a given path using an in-memory history.
+ * 実際のアプリのルートツリーを、インメモリ履歴で指定パスにレンダリングする。
  *
- * Because the QueryClientProvider lives on the root route (AppLayout), this also
- * supplies the TanStack Query context. A fresh router (and therefore a fresh
- * QueryClient) is created per call, keeping tests isolated.
+ * QueryClientProvider はルートルート（AppLayout）に載っているため、これだけで
+ * TanStack Query のコンテキストも供給される。呼び出しごとに新しい router（したがって
+ * 新しい QueryClient）を作るので、テスト間の分離が保たれる。
  */
 export function renderAt(path: string) {
   const router = createRouter({

@@ -27,7 +27,7 @@ export default defineConfig({
   server: {
     port: 5001,
     proxy: {
-      // Forward API calls to the backend during development.
+      // 開発時は API 呼び出しをバックエンドへ転送する。
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,

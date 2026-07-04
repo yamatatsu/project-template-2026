@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 
 import { TaskPriorityBadge, TaskStatusBadge, taskDetailQuery } from '@/entities/task';
 import { DeleteTaskButton } from '@/features/delete-task';
 import { formatDateTime } from '@/shared/lib/utils';
-import { Button } from '@/shared/ui/button';
+import { ButtonLink } from '@/shared/ui/button-link';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/shared/ui/card';
 
 export function TaskDetailPage() {
@@ -26,7 +26,9 @@ export function TaskDetailPage() {
         <p className="text-destructive text-sm" data-testid="task-detail-error">
           タスクが見つかりませんでした。
         </p>
-        <Button variant="outline" render={<Link to="/tasks">一覧へ戻る</Link>} />
+        <ButtonLink to="/tasks" variant="outline">
+          一覧へ戻る
+        </ButtonLink>
       </div>
     );
   }
@@ -34,7 +36,9 @@ export function TaskDetailPage() {
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" render={<Link to="/tasks">← 一覧へ</Link>} />
+        <ButtonLink to="/tasks" variant="ghost" size="sm">
+          ← 一覧へ
+        </ButtonLink>
         <h1 className="text-2xl font-bold">タスク詳細</h1>
       </div>
 
@@ -69,13 +73,9 @@ export function TaskDetailPage() {
           </div>
         </CardContent>
         <CardFooter className="gap-2">
-          <Button
-            render={
-              <Link to="/tasks/$taskId/edit" params={{ taskId: task.id }}>
-                編集
-              </Link>
-            }
-          />
+          <ButtonLink to="/tasks/$taskId/edit" params={{ taskId: task.id }}>
+            編集
+          </ButtonLink>
           <DeleteTaskButton task={task} onDeleted={() => void navigate({ to: '/tasks' })} />
         </CardFooter>
       </Card>

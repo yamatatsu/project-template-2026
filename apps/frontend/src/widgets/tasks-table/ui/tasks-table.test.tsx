@@ -8,6 +8,12 @@ const tasksGet = vi.fn();
 
 vi.mock('@/shared/api', () => ({
   client: {
+    auth: {
+      me: {
+        $get: () =>
+          Promise.resolve(rpcResponse({ userSub: 'test-user', email: 'test@example.com' })),
+      },
+    },
     tasks: Object.assign(
       { $get: (...args: unknown[]) => tasksGet(...args), $post: vi.fn() },
       { ':id': { $get: vi.fn(), $put: vi.fn(), $delete: vi.fn() } },
@@ -62,7 +68,7 @@ describe('TasksTable', () => {
 
     renderAt('/tasks');
 
-    // The shared QueryClient retries failed queries (default 3x), so allow extra time.
+    // 共有の QueryClient は失敗した query をリトライする（デフォルト 3 回）ため、長めに待つ。
     expect(
       await screen.findByTestId('tasks-table-error', {}, { timeout: 15000 }),
     ).toBeInTheDocument();

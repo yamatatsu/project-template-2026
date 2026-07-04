@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 
-// jsdom does not implement matchMedia, which the shadcn sidebar relies on.
+// jsdom は matchMedia を実装しておらず、shadcn の sidebar がこれに依存しているため。
 vi.stubGlobal(
   'matchMedia',
   vi.fn((query: string) => ({

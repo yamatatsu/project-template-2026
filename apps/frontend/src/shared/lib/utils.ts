@@ -5,7 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Format an ISO date string for display. Returns a fallback for null/empty. */
+/** ISO 日時文字列を表示用にフォーマットする。null/空のときは fallback を返す。 */
 export function formatDateTime(iso: string | null, fallback = '-'): string {
   if (!iso) return fallback;
   const date = new Date(iso);

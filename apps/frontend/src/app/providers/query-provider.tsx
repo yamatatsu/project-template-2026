@@ -2,10 +2,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 
 /**
- * Provides the TanStack Query client to the app.
+ * TanStack Query のクライアントをアプリに提供する。
  *
- * Lives in the app layer and is composed onto the root route so that any render
- * of the route tree (including tests) has a QueryClient available.
+ * app レイヤーに置き、ルートルートに合成することで、ルートツリーをレンダリングする
+ * あらゆる場面（テストを含む）で QueryClient が利用できるようにしている。
  */
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());

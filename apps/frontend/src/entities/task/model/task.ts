@@ -3,10 +3,10 @@ import type { InferResponseType } from 'hono/client';
 import { client } from '@/shared/api';
 
 /**
- * Task entity type derived from the Hono RPC response (200, list endpoint).
+ * Hono RPC のレスポンス（一覧エンドポイントの 200）から導出した Task エンティティ型。
  *
- * Because this is the JSON-serialized shape, dates are strings:
- * `dueDate: string | null`, `createdAt: string`, `updatedAt: string`.
+ * JSON シリアライズ後の形なので、日時は文字列になる:
+ * `dueDate: string | null`、`createdAt: string`、`updatedAt: string`。
  */
 export type Task = InferResponseType<typeof client.tasks.$get, 200>[number];
 

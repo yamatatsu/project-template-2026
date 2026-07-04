@@ -2,14 +2,14 @@ import { queryOptions } from '@tanstack/react-query';
 
 import { client } from '@/shared/api';
 
-/** Query key factory for the task entity. */
+/** task エンティティの query key ファクトリ。 */
 export const taskKeys = {
   all: ['tasks'] as const,
   lists: () => [...taskKeys.all, 'list'] as const,
   detail: (id: string) => [...taskKeys.all, 'detail', id] as const,
 };
 
-/** Query options for the task list (createdAt descending). */
+/** タスク一覧（createdAt 降順）の query options。 */
 export function taskListQuery() {
   return queryOptions({
     queryKey: taskKeys.lists(),
@@ -23,7 +23,7 @@ export function taskListQuery() {
   });
 }
 
-/** Query options for a single task by id. */
+/** id 指定の単一タスクの query options。 */
 export function taskDetailQuery(id: string) {
   return queryOptions({
     queryKey: taskKeys.detail(id),

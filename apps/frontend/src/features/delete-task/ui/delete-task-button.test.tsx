@@ -46,7 +46,7 @@ describe('DeleteTaskButton', () => {
 
     renderWithQuery(<DeleteTaskButton task={makeTask({ id: 'del-1' })} onDeleted={onDeleted} />);
 
-    // Dialog content is not mounted until the trigger is clicked.
+    // ダイアログの中身はトリガーがクリックされるまでマウントされない。
     expect(screen.queryByTestId('delete-task-dialog')).not.toBeInTheDocument();
 
     await user.click(screen.getByTestId('delete-task-trigger'));

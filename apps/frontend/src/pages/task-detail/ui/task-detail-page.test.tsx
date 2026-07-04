@@ -8,6 +8,12 @@ const detailGet = vi.fn();
 
 vi.mock('@/shared/api', () => ({
   client: {
+    auth: {
+      me: {
+        $get: () =>
+          Promise.resolve(rpcResponse({ userSub: 'test-user', email: 'test@example.com' })),
+      },
+    },
     tasks: Object.assign(
       { $get: vi.fn(), $post: vi.fn() },
       {
@@ -59,7 +65,7 @@ describe('TaskDetailPage', () => {
 
     renderAt('/tasks/missing');
 
-    // The shared QueryClient retries failed queries (default 3x), so allow extra time.
+    // 共有の QueryClient は失敗した query をリトライする（デフォルト 3 回）ため、長めに待つ。
     expect(
       await screen.findByTestId('task-detail-error', {}, { timeout: 15000 }),
     ).toBeInTheDocument();

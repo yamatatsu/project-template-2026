@@ -1,11 +1,7 @@
-import {
-  type CreateTaskInput,
-  createTaskSchema,
-  type UpdateTaskInput,
-} from '@icasu/backend/schema';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import type { InferRequestType } from 'hono/client';
 import { useState } from 'react';
 
 import { type Task, taskKeys, taskPriorityLabels, taskStatusLabels } from '@/entities/task';
@@ -16,6 +12,14 @@ import { Label } from '@/shared/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { Textarea } from '@/shared/ui/textarea';
 
+import { taskFormSchema } from '../model/schema';
+
+// ペイロードの型はサーバの検証スキーマからではなく RPC 型から取り出す。
+// 契約面を `AppType` 一本に集約し、フロントが backend 内部モジュールへ
+// runtime 依存しないようにするため。
+type CreateTaskInput = InferRequestType<typeof client.tasks.$post>['json'];
+type UpdateTaskInput = InferRequestType<(typeof client.tasks)[':id']['$put']>['json'];
+
 type TaskFormProps = { mode: 'create'; task?: undefined } | { mode: 'edit'; task: Task };
 
 type FormValues = {
@@ -23,11 +27,11 @@ type FormValues = {
   description: string;
   status: Task['status'];
   priority: Task['priority'];
-  /** datetime-local string ('' when empty). */
+  /** datetime-local 形式の文字列（未入力のときは ''）。 */
   dueDate: string;
 };
 
-/** Convert an ISO string to a `datetime-local` input value (local time). */
+/** ISO 文字列を `datetime-local` input の値（ローカル時刻）に変換する。 */
 function isoToDateTimeLocal(iso: string | null): string {
   if (!iso) return '';
   const date = new Date(iso);
@@ -38,7 +42,7 @@ function isoToDateTimeLocal(iso: string | null): string {
   )}:${pad(date.getMinutes())}`;
 }
 
-/** Convert a `datetime-local` input value to an offset ISO string (or null). */
+/** `datetime-local` input の値をオフセット付き ISO 文字列（または null）に変換する。 */
 function dateTimeLocalToIso(value: string): string | null {
   if (!value) return null;
   const date = new Date(value);
@@ -122,7 +126,7 @@ export function TaskForm({ mode, task }: TaskFormProps) {
         name="title"
         validators={{
           onChange: ({ value }) => {
-            const result = createTaskSchema.shape.title.safeParse(value);
+            const result = taskFormSchema.shape.title.safeParse(value);
             return result.success ? undefined : result.error.issues[0]?.message;
           },
         }}
