@@ -17,6 +17,7 @@
     "steiger": "pnpm --filter @icasu/frontend run steiger",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
+    "local:up": "docker compose up -d --wait",
     "db:generate": "pnpm --filter @icasu/db db:generate",
     "db:migrate": "pnpm --filter @icasu/db db:migrate",
     "db:push": "pnpm --filter @icasu/db db:push",
