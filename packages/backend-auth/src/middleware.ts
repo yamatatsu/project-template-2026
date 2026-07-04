@@ -1,9 +1,9 @@
-import type { Context } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
 import { createMiddleware } from 'hono/factory';
 
-import { clearSessionCookie, readSessionCookie } from './libs/cookie.ts';
-import { refreshTokens, TokenError } from './libs/oidc.ts';
-import { deleteSession, getSession, saveSession, type SessionData } from './libs/session.ts';
+import type { Cookies } from './libs/cookie.ts';
+import { type OidcClient, TokenError } from './libs/oidc.ts';
+import type { SessionData, SessionStore } from './libs/session.ts';
 
 /** Authenticated user info exposed to handlers via `c.get('session')`. */
 export interface SessionContext {
@@ -17,69 +17,84 @@ export interface AuthEnv {
   Variables: { session: SessionContext };
 }
 
+/** The middleware `createRequireSession` produces; also the type hosts inject. */
+export type RequireSession = MiddlewareHandler<AuthEnv>;
+
+/** Dependencies `requireSession` needs. */
+export interface RequireSessionDeps {
+  cookies: Cookies;
+  store: SessionStore;
+  oidc: Pick<OidcClient, 'refreshTokens'>;
+}
+
 /** Margin (seconds) before real expiry at which we proactively refresh. */
 const REFRESH_MARGIN_SECONDS = 60;
 
 /**
- * Protect a route group: require a valid session cookie, transparently
- * refreshing the access token (with rotation) when it is about to expire.
- * Responds 401 `{ error: 'unauthenticated' }` when there is no usable session.
+ * Build the middleware that protects a route group: require a valid session
+ * cookie, transparently refreshing the access token (with rotation) when it is
+ * about to expire. Responds 401 `{ error: 'unauthenticated' }` when there is no
+ * usable session.
  */
-export const requireSession = createMiddleware<AuthEnv>(async (c, next) => {
-  const sessionId = await readSessionCookie(c);
-  if (!sessionId) {
-    return c.json({ error: 'unauthenticated' }, 401);
+export function createRequireSession(deps: RequireSessionDeps): RequireSession {
+  const { cookies, store, oidc } = deps;
+
+  async function invalidate(c: Context<AuthEnv>, sessionId: string): Promise<void> {
+    await store.deleteSession(sessionId);
+    cookies.clearSessionCookie(c);
   }
 
-  let session = await getSession(sessionId);
-  if (!session) {
-    clearSessionCookie(c);
-    return c.json({ error: 'unauthenticated' }, 401);
-  }
-
-  if (session.accessTokenExpiresAt - REFRESH_MARGIN_SECONDS <= Math.floor(Date.now() / 1000)) {
-    const refreshed = await tryRefresh(c, sessionId, session);
-    if (!refreshed) {
-      return c.json({ error: 'unauthenticated' }, 401);
-    }
-    session = refreshed;
-  }
-
-  c.set('session', { sessionId, userSub: session.userSub, email: session.email });
-  await next();
-});
-
-async function tryRefresh(
-  c: Context<AuthEnv>,
-  sessionId: string,
-  session: SessionData,
-): Promise<SessionData | undefined> {
-  if (!session.refreshToken) {
-    await invalidate(c, sessionId);
-    return undefined;
-  }
-  try {
-    const tokens = await refreshTokens(session.refreshToken);
-    const updated: SessionData = {
-      ...session,
-      accessToken: tokens.accessToken,
-      // Refresh-token rotation: keep the new one if the provider issued it.
-      refreshToken: tokens.refreshToken ?? session.refreshToken,
-      idToken: tokens.idToken,
-      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expiresIn,
-    };
-    await saveSession(sessionId, updated);
-    return updated;
-  } catch (err) {
-    if (err instanceof TokenError && err.isInvalidGrant) {
+  async function tryRefresh(
+    c: Context<AuthEnv>,
+    sessionId: string,
+    session: SessionData,
+  ): Promise<SessionData | undefined> {
+    if (!session.refreshToken) {
       await invalidate(c, sessionId);
       return undefined;
     }
-    throw err;
+    try {
+      const tokens = await oidc.refreshTokens(session.refreshToken);
+      const updated: SessionData = {
+        ...session,
+        accessToken: tokens.accessToken,
+        // Refresh-token rotation: keep the new one if the provider issued it.
+        refreshToken: tokens.refreshToken ?? session.refreshToken,
+        idToken: tokens.idToken,
+        accessTokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expiresIn,
+      };
+      await store.saveSession(sessionId, updated);
+      return updated;
+    } catch (err) {
+      if (err instanceof TokenError && err.isInvalidGrant) {
+        await invalidate(c, sessionId);
+        return undefined;
+      }
+      throw err;
+    }
   }
-}
 
-async function invalidate(c: Context<AuthEnv>, sessionId: string): Promise<void> {
-  await deleteSession(sessionId);
-  clearSessionCookie(c);
+  return createMiddleware<AuthEnv>(async (c, next) => {
+    const sessionId = await cookies.readSessionCookie(c);
+    if (!sessionId) {
+      return c.json({ error: 'unauthenticated' }, 401);
+    }
+
+    let session = await store.getSession(sessionId);
+    if (!session) {
+      cookies.clearSessionCookie(c);
+      return c.json({ error: 'unauthenticated' }, 401);
+    }
+
+    if (session.accessTokenExpiresAt - REFRESH_MARGIN_SECONDS <= Math.floor(Date.now() / 1000)) {
+      const refreshed = await tryRefresh(c, sessionId, session);
+      if (!refreshed) {
+        return c.json({ error: 'unauthenticated' }, 401);
+      }
+      session = refreshed;
+    }
+
+    c.set('session', { sessionId, userSub: session.userSub, email: session.email });
+    await next();
+  });
 }

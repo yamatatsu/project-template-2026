@@ -1,61 +1,58 @@
 import { Hono } from 'hono';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
-import { type AuthEnv, requireSession } from './middleware.ts';
+import { TokenError } from './libs/oidc.ts';
+import type { SessionData } from './libs/session.ts';
+import { type AuthEnv, createRequireSession } from './middleware.ts';
 
 /**
  * `requireSession` spec.
  *
  * Unlike `route.test.ts` (which drives the whole BFF flow with real cookies),
- * this isolates the middleware by mocking its three boundaries — the cookie
- * reader, the session store, and the token endpoint — so each branch (no
- * cookie / no session / valid / refresh-with-rotation / invalidation) can be
- * asserted directly, including which side effects fire.
+ * this isolates the middleware by injecting fakes for its three dependencies —
+ * the cookie helpers, the session store, and the token endpoint — so each
+ * branch (no cookie / no session / valid / refresh-with-rotation /
+ * invalidation) can be asserted directly, including which side effects fire.
  */
 
-const boundary = vi.hoisted(() => ({
-  readSessionCookie: vi.fn(),
-  clearSessionCookie: vi.fn(),
-  getSession: vi.fn(),
-  saveSession: vi.fn(),
-  deleteSession: vi.fn(),
-  refreshTokens: vi.fn(),
-}));
+let cookies: {
+  setSessionCookie: Mock;
+  readSessionCookie: Mock;
+  clearSessionCookie: Mock;
+};
+let store: {
+  saveState: Mock;
+  consumeState: Mock;
+  saveSession: Mock;
+  getSession: Mock;
+  deleteSession: Mock;
+};
+let refreshTokens: Mock;
+let app: Hono<AuthEnv>;
 
-vi.mock('./libs/cookie.ts', () => ({
-  readSessionCookie: boundary.readSessionCookie,
-  clearSessionCookie: boundary.clearSessionCookie,
-}));
+beforeEach(() => {
+  cookies = {
+    setSessionCookie: vi.fn(),
+    readSessionCookie: vi.fn(),
+    clearSessionCookie: vi.fn(),
+  };
+  store = {
+    saveState: vi.fn(),
+    consumeState: vi.fn(),
+    saveSession: vi.fn(),
+    getSession: vi.fn(),
+    deleteSession: vi.fn(),
+  };
+  refreshTokens = vi.fn();
 
-vi.mock('./libs/session.ts', () => ({
-  getSession: boundary.getSession,
-  saveSession: boundary.saveSession,
-  deleteSession: boundary.deleteSession,
-}));
-
-// Keep TokenError real (the invalid-grant branch relies on it); stub the call.
-vi.mock('./libs/oidc.ts', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./libs/oidc.ts')>()),
-  refreshTokens: boundary.refreshTokens,
-}));
-
-const { TokenError } = await import('./libs/oidc.ts');
-
-// A minimal protected app: the handler echoes the session the middleware set.
-const app = new Hono<AuthEnv>()
-  .use('*', requireSession)
-  .get('/protected', (c) => c.json(c.get('session')));
+  const requireSession = createRequireSession({ cookies, store, oidc: { refreshTokens } });
+  // A minimal protected app: the handler echoes the session the middleware set.
+  app = new Hono<AuthEnv>()
+    .use('*', requireSession)
+    .get('/protected', (c) => c.json(c.get('session')));
+});
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
-
-interface SessionData {
-  accessToken: string;
-  refreshToken: string | undefined;
-  idToken: string;
-  accessTokenExpiresAt: number;
-  userSub: string;
-  email: string | undefined;
-}
 
 function makeSession(overrides: Partial<SessionData> = {}): SessionData {
   return {
@@ -71,39 +68,35 @@ function makeSession(overrides: Partial<SessionData> = {}): SessionData {
 
 const request = () => app.request('/protected');
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 describe('when there is no session cookie', () => {
   it('responds 401 without touching the session store', async () => {
-    boundary.readSessionCookie.mockResolvedValue(undefined);
+    cookies.readSessionCookie.mockResolvedValue(undefined);
 
     const res = await request();
 
     expect(res.status).toBe(401);
     expect(await res.json()).toEqual({ error: 'unauthenticated' });
-    expect(boundary.getSession).not.toHaveBeenCalled();
-    expect(boundary.clearSessionCookie).not.toHaveBeenCalled();
+    expect(store.getSession).not.toHaveBeenCalled();
+    expect(cookies.clearSessionCookie).not.toHaveBeenCalled();
   });
 });
 
 describe('when the cookie has no matching session', () => {
   it('clears the stale cookie and responds 401', async () => {
-    boundary.readSessionCookie.mockResolvedValue('sess-1');
-    boundary.getSession.mockResolvedValue(undefined);
+    cookies.readSessionCookie.mockResolvedValue('sess-1');
+    store.getSession.mockResolvedValue(undefined);
 
     const res = await request();
 
     expect(res.status).toBe(401);
-    expect(boundary.clearSessionCookie).toHaveBeenCalledOnce();
+    expect(cookies.clearSessionCookie).toHaveBeenCalledOnce();
   });
 });
 
 describe('when the session is valid and not near expiry', () => {
   it('exposes the session to the handler and does not refresh', async () => {
-    boundary.readSessionCookie.mockResolvedValue('sess-1');
-    boundary.getSession.mockResolvedValue(makeSession());
+    cookies.readSessionCookie.mockResolvedValue('sess-1');
+    store.getSession.mockResolvedValue(makeSession());
 
     const res = await request();
 
@@ -113,20 +106,20 @@ describe('when the session is valid and not near expiry', () => {
       userSub: 'user-1',
       email: 'user@example.com',
     });
-    expect(boundary.refreshTokens).not.toHaveBeenCalled();
-    expect(boundary.saveSession).not.toHaveBeenCalled();
+    expect(refreshTokens).not.toHaveBeenCalled();
+    expect(store.saveSession).not.toHaveBeenCalled();
   });
 });
 
 describe('when the access token is within the refresh margin', () => {
   beforeEach(() => {
-    boundary.readSessionCookie.mockResolvedValue('sess-1');
+    cookies.readSessionCookie.mockResolvedValue('sess-1');
     // 30s of life left → inside the 60s refresh margin.
-    boundary.getSession.mockResolvedValue(makeSession({ accessTokenExpiresAt: nowSeconds() + 30 }));
+    store.getSession.mockResolvedValue(makeSession({ accessTokenExpiresAt: nowSeconds() + 30 }));
   });
 
   it('refreshes, persists the rotated tokens, and proceeds', async () => {
-    boundary.refreshTokens.mockResolvedValue({
+    refreshTokens.mockResolvedValue({
       accessToken: 'access-2',
       refreshToken: 'refresh-2',
       idToken: 'id-2',
@@ -136,8 +129,8 @@ describe('when the access token is within the refresh margin', () => {
     const res = await request();
 
     expect(res.status).toBe(200);
-    expect(boundary.refreshTokens).toHaveBeenCalledWith('refresh-1');
-    expect(boundary.saveSession).toHaveBeenCalledWith(
+    expect(refreshTokens).toHaveBeenCalledWith('refresh-1');
+    expect(store.saveSession).toHaveBeenCalledWith(
       'sess-1',
       expect.objectContaining({
         accessToken: 'access-2',
@@ -147,12 +140,12 @@ describe('when the access token is within the refresh margin', () => {
       }),
     );
     // The refreshed access token is good for ~1h from now.
-    const saved = boundary.saveSession.mock.calls[0]![1] as SessionData;
+    const saved = store.saveSession.mock.calls[0]![1] as SessionData;
     expect(saved.accessTokenExpiresAt).toBeGreaterThan(nowSeconds() + 3000);
   });
 
   it('keeps the existing refresh token when the provider does not rotate it', async () => {
-    boundary.refreshTokens.mockResolvedValue({
+    refreshTokens.mockResolvedValue({
       accessToken: 'access-2',
       refreshToken: undefined,
       idToken: 'id-2',
@@ -162,49 +155,49 @@ describe('when the access token is within the refresh margin', () => {
     const res = await request();
 
     expect(res.status).toBe(200);
-    expect(boundary.saveSession).toHaveBeenCalledWith(
+    expect(store.saveSession).toHaveBeenCalledWith(
       'sess-1',
       expect.objectContaining({ refreshToken: 'refresh-1' }),
     );
   });
 
   it('rethrows a transient token-endpoint error without destroying the session', async () => {
-    boundary.refreshTokens.mockRejectedValue(new TokenError(503, 'service unavailable'));
+    refreshTokens.mockRejectedValue(new TokenError(503, 'service unavailable'));
 
     const res = await request();
 
     expect(res.status).toBe(500);
-    expect(boundary.deleteSession).not.toHaveBeenCalled();
-    expect(boundary.clearSessionCookie).not.toHaveBeenCalled();
+    expect(store.deleteSession).not.toHaveBeenCalled();
+    expect(cookies.clearSessionCookie).not.toHaveBeenCalled();
   });
 });
 
 describe('when the session can no longer be refreshed', () => {
   beforeEach(() => {
-    boundary.readSessionCookie.mockResolvedValue('sess-1');
+    cookies.readSessionCookie.mockResolvedValue('sess-1');
   });
 
   it('invalidates a session that has no refresh token', async () => {
-    boundary.getSession.mockResolvedValue(
+    store.getSession.mockResolvedValue(
       makeSession({ accessTokenExpiresAt: nowSeconds() + 30, refreshToken: undefined }),
     );
 
     const res = await request();
 
     expect(res.status).toBe(401);
-    expect(boundary.refreshTokens).not.toHaveBeenCalled();
-    expect(boundary.deleteSession).toHaveBeenCalledWith('sess-1');
-    expect(boundary.clearSessionCookie).toHaveBeenCalledOnce();
+    expect(refreshTokens).not.toHaveBeenCalled();
+    expect(store.deleteSession).toHaveBeenCalledWith('sess-1');
+    expect(cookies.clearSessionCookie).toHaveBeenCalledOnce();
   });
 
   it('invalidates the session when the refresh token is rejected (invalid_grant)', async () => {
-    boundary.getSession.mockResolvedValue(makeSession({ accessTokenExpiresAt: nowSeconds() + 30 }));
-    boundary.refreshTokens.mockRejectedValue(new TokenError(400, '{"error":"invalid_grant"}'));
+    store.getSession.mockResolvedValue(makeSession({ accessTokenExpiresAt: nowSeconds() + 30 }));
+    refreshTokens.mockRejectedValue(new TokenError(400, '{"error":"invalid_grant"}'));
 
     const res = await request();
 
     expect(res.status).toBe(401);
-    expect(boundary.deleteSession).toHaveBeenCalledWith('sess-1');
-    expect(boundary.clearSessionCookie).toHaveBeenCalledOnce();
+    expect(store.deleteSession).toHaveBeenCalledWith('sess-1');
+    expect(cookies.clearSessionCookie).toHaveBeenCalledOnce();
   });
 });

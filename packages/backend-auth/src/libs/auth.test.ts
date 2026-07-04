@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { getAuthConfig, resetAuthConfig } from './config.ts';
-import { buildAuthorizeUrl, buildLogoutUrl } from './oidc.ts';
+import { type AuthConfig, loadAuthConfigFromEnv } from './config.ts';
+import { createOidcClient } from './oidc.ts';
 import { challengeFromVerifier, generateVerifier } from './pkce.ts';
 
 const ENV: Record<string, string> = {
@@ -21,19 +21,7 @@ const ENV: Record<string, string> = {
   SESSION_TABLE_NAME: 'sessions',
 };
 
-beforeEach(() => {
-  for (const [key, value] of Object.entries(ENV)) {
-    process.env[key] = value;
-  }
-  resetAuthConfig();
-});
-
-afterAll(() => {
-  for (const key of Object.keys(ENV)) {
-    delete process.env[key];
-  }
-  resetAuthConfig();
-});
+const config: AuthConfig = loadAuthConfigFromEnv(ENV);
 
 describe('pkce', () => {
   it('derives an S256 base64url challenge from the verifier', () => {
@@ -52,7 +40,8 @@ describe('pkce', () => {
 
 describe('buildAuthorizeUrl', () => {
   it('includes the OIDC authorization-code + PKCE parameters', () => {
-    const url = new URL(buildAuthorizeUrl({ state: 's1', nonce: 'n1', codeChallenge: 'c1' }));
+    const oidc = createOidcClient(config);
+    const url = new URL(oidc.buildAuthorizeUrl({ state: 's1', nonce: 'n1', codeChallenge: 'c1' }));
     expect(`${url.origin}${url.pathname}`).toBe('http://localhost:8080/default/authorize');
     expect(url.searchParams.get('response_type')).toBe('code');
     expect(url.searchParams.get('client_id')).toBe('local-client');
@@ -67,7 +56,8 @@ describe('buildAuthorizeUrl', () => {
 
 describe('buildLogoutUrl', () => {
   it('substitutes {redirect} with the URL-encoded app base URL', () => {
-    expect(buildLogoutUrl()).toBe(
+    const oidc = createOidcClient(config);
+    expect(oidc.buildLogoutUrl()).toBe(
       `http://localhost:8080/default/endsession?post_logout_redirect_uri=${encodeURIComponent(
         'http://localhost:5001',
       )}`,
@@ -75,10 +65,17 @@ describe('buildLogoutUrl', () => {
   });
 });
 
-describe('getAuthConfig', () => {
-  it('throws when a required env var is missing', () => {
-    delete process.env.OIDC_ISSUER;
-    resetAuthConfig();
-    expect(() => getAuthConfig()).toThrow(/OIDC_ISSUER/);
+describe('loadAuthConfigFromEnv', () => {
+  it('parses a complete environment', () => {
+    expect(config.oidc.issuer).toBe('http://localhost:8080/default');
+    expect(config.cookie.name).toBe('sid');
+    // COOKIE_SECURE defaults to true when unset.
+    expect(config.cookie.secure).toBe(true);
+    expect(config.dynamo.region).toBe('ap-northeast-1');
+  });
+
+  it('reports every missing required variable at once', () => {
+    const { OIDC_ISSUER: _issuer, COOKIE_SECRET: _secret, ...partial } = ENV;
+    expect(() => loadAuthConfigFromEnv(partial)).toThrow(/OIDC_ISSUER.*COOKIE_SECRET/);
   });
 });

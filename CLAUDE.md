@@ -13,13 +13,13 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 内部パッケージは `@icasu/*` で名前空間を切り、ビルド無しの TS ソースを `exports` で直接公開する
 （`tsconfig.base.json` の `allowImportingTsExtensions` 前提）。
 
-| パッケージ                                       | 役割                                                                                                                          |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `apps/frontend`                                  | React SPA（Feature-Sliced Design）。バックの `AppType` を Hono RPC で型として取り込む。                                       |
-| `apps/backend`                                   | Hono の BFF。`@icasu/backend-auth` を `/auth` にマウントし、`tasks` API を提供。Node / Lambda。                               |
-| `apps/iac`                                       | AWS CDK（TypeScript）。フロント配信・API・Cognito・セッションテーブル等のインフラ。                                           |
-| `packages/db`（`@icasu/db`）                     | Drizzle のスキーマ / DB クライアント（`./schema`・`./client`・`./migrations`）。                                              |
-| `packages/backend-auth`（`@icasu/backend-auth`） | BFF 認証（OIDC 認可コード + PKCE）。`authRoute`（Hono app）と `requireSession` / `AuthEnv` を公開し、認証機能のテストも同梱。 |
+| パッケージ                                       | 役割                                                                                                                              |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/frontend`                                  | React SPA（Feature-Sliced Design）。バックの `AppType` を Hono RPC で型として取り込む。                                           |
+| `apps/backend`                                   | Hono の BFF。`createApp(config)` が合成点で、`@icasu/backend-auth` を `/auth` にマウントし `tasks` API を提供。Node / Lambda。    |
+| `apps/iac`                                       | AWS CDK（TypeScript）。フロント配信・API・Cognito・セッションテーブル等のインフラ。                                               |
+| `packages/db`（`@icasu/db`）                     | Drizzle のスキーマ / DB クライアント（`./schema`・`./client`・`./migrations`）。                                                  |
+| `packages/backend-auth`（`@icasu/backend-auth`） | BFF 認証（OIDC 認可コード + PKCE）。設定注入の `createAuth(config)` と `loadAuthConfigFromEnv` を公開し、認証機能のテストも同梱。 |
 
 依存の向き: `apps/*` → `packages/*` の一方向のみ（`packages` から `apps` は参照しない）。
 各パッケージ固有の規約はそのパッケージの `CLAUDE.md` に書く（後述の「ドキュメントの置き場所」）。
@@ -49,6 +49,21 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 
 認証（OAuth BFF パターン）の仕組み・設計・本番 Cognito との切り替えは
 [`packages/backend-auth/CLAUDE.md`](packages/backend-auth/CLAUDE.md) を参照。
+
+## ドキュメントの言語
+
+- **コメント・ドキュメントは日本語で書く**（コード内コメント、`CLAUDE.md` / `README` などの
+  Markdown、`.env.example` の説明、コミットメッセージ等）。コード上の識別子や技術用語・コマンドは
+  原語のままでよい。
+
+## コードコメントの方針
+
+- コメントには **why（なぜそうするのか）と非自明な前提**を書く。コードを読めば分かる
+  **what（何をしているか）や how（どうやっているか）は書かない**。
+- 具体的には、選択の理由・トレードオフ、外部仕様や制約（RFC・プロバイダの挙動・ブラウザ仕様
+  など）、一見不要／不自然に見えるコードが必要な事情、ハマりどころや将来の落とし穴を残す。
+- コメントで補うより、まず名前と構造で意図が伝わるコードにする。コメントが what の言い換えに
+  なっているなら、コメントではなくコードを直す。
 
 ## ドキュメントの置き場所
 

@@ -1,4 +1,4 @@
-import { getAuthConfig } from './config.ts';
+import type { AuthConfig } from './config.ts';
 
 /** Tokens returned by the provider's token endpoint. */
 export interface TokenSet {
@@ -28,52 +28,15 @@ export class TokenError extends Error {
   }
 }
 
-/** Build the provider `/authorize` redirect URL (authorization code + PKCE). */
-export function buildAuthorizeUrl(params: {
-  state: string;
-  nonce: string;
-  codeChallenge: string;
-}): string {
-  const cfg = getAuthConfig();
-  const url = new URL(cfg.oidc.authorizeUrl);
-  url.searchParams.set('response_type', 'code');
-  url.searchParams.set('client_id', cfg.oidc.clientId);
-  url.searchParams.set('redirect_uri', cfg.redirectUri);
-  url.searchParams.set('scope', cfg.oidc.scopes);
-  url.searchParams.set('state', params.state);
-  url.searchParams.set('nonce', params.nonce);
-  url.searchParams.set('code_challenge', params.codeChallenge);
-  url.searchParams.set('code_challenge_method', 'S256');
-  return url.toString();
-}
-
-/** Exchange an authorization code for tokens (with the PKCE verifier). */
-export function exchangeCode(code: string, codeVerifier: string): Promise<TokenSet> {
-  const cfg = getAuthConfig();
-  return tokenRequest(
-    new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: cfg.redirectUri,
-      code_verifier: codeVerifier,
-    }),
-  );
-}
-
-/** Exchange a refresh token for a fresh token set. */
-export function refreshTokens(refreshToken: string): Promise<TokenSet> {
-  return tokenRequest(
-    new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-    }),
-  );
-}
-
-/** Build the provider logout URL (`{redirect}` replaced with the app base URL). */
-export function buildLogoutUrl(): string {
-  const cfg = getAuthConfig();
-  return cfg.logoutUrl.replace('{redirect}', encodeURIComponent(cfg.appBaseUrl));
+export interface OidcClient {
+  /** Build the provider `/authorize` redirect URL (authorization code + PKCE). */
+  buildAuthorizeUrl(params: { state: string; nonce: string; codeChallenge: string }): string;
+  /** Exchange an authorization code for tokens (with the PKCE verifier). */
+  exchangeCode(code: string, codeVerifier: string): Promise<TokenSet>;
+  /** Exchange a refresh token for a fresh token set. */
+  refreshTokens(refreshToken: string): Promise<TokenSet>;
+  /** Build the provider logout URL (`{redirect}` replaced with the app base URL). */
+  buildLogoutUrl(): string;
 }
 
 interface TokenResponse {
@@ -83,28 +46,68 @@ interface TokenResponse {
   expires_in: number;
 }
 
-async function tokenRequest(body: URLSearchParams): Promise<TokenSet> {
-  const cfg = getAuthConfig();
-  // Confidential client: authenticate with HTTP Basic (client_id:client_secret).
-  const basic = Buffer.from(`${cfg.oidc.clientId}:${cfg.oidc.clientSecret}`).toString('base64');
-  const res = await fetch(cfg.oidc.tokenUrl, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      authorization: `Basic ${basic}`,
-    },
-    body,
-  });
+/** Build the OIDC client bound to the provider config. */
+export function createOidcClient(cfg: AuthConfig): OidcClient {
+  const { oidc } = cfg;
 
-  if (!res.ok) {
-    throw new TokenError(res.status, await res.text());
+  async function tokenRequest(body: URLSearchParams): Promise<TokenSet> {
+    // Confidential client: authenticate with HTTP Basic (client_id:client_secret).
+    const basic = Buffer.from(`${oidc.clientId}:${oidc.clientSecret}`).toString('base64');
+    const res = await fetch(oidc.tokenUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        authorization: `Basic ${basic}`,
+      },
+      body,
+    });
+
+    if (!res.ok) {
+      throw new TokenError(res.status, await res.text());
+    }
+
+    const json = (await res.json()) as TokenResponse;
+    return {
+      accessToken: json.access_token,
+      refreshToken: json.refresh_token,
+      idToken: json.id_token,
+      expiresIn: json.expires_in,
+    };
   }
 
-  const json = (await res.json()) as TokenResponse;
   return {
-    accessToken: json.access_token,
-    refreshToken: json.refresh_token,
-    idToken: json.id_token,
-    expiresIn: json.expires_in,
+    buildAuthorizeUrl(params) {
+      const url = new URL(oidc.authorizeUrl);
+      url.searchParams.set('response_type', 'code');
+      url.searchParams.set('client_id', oidc.clientId);
+      url.searchParams.set('redirect_uri', cfg.redirectUri);
+      url.searchParams.set('scope', oidc.scopes);
+      url.searchParams.set('state', params.state);
+      url.searchParams.set('nonce', params.nonce);
+      url.searchParams.set('code_challenge', params.codeChallenge);
+      url.searchParams.set('code_challenge_method', 'S256');
+      return url.toString();
+    },
+    exchangeCode(code, codeVerifier) {
+      return tokenRequest(
+        new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: cfg.redirectUri,
+          code_verifier: codeVerifier,
+        }),
+      );
+    },
+    refreshTokens(refreshToken) {
+      return tokenRequest(
+        new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+        }),
+      );
+    },
+    buildLogoutUrl() {
+      return cfg.logoutUrl.replace('{redirect}', encodeURIComponent(cfg.appBaseUrl));
+    },
   };
 }

@@ -1,28 +1,29 @@
 import { createRemoteJWKSet, type JWTPayload, jwtVerify } from 'jose';
 
-import { getAuthConfig } from './config.ts';
+import type { AuthConfig } from './config.ts';
 
-let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
-
-function getJwks(): ReturnType<typeof createRemoteJWKSet> {
-  if (!jwks) {
-    jwks = createRemoteJWKSet(new URL(getAuthConfig().oidc.jwksUrl));
-  }
-  return jwks;
+export interface IdTokenVerifier {
+  /**
+   * Verify an id_token against the provider's JWKS, issuer, and audience, then
+   * check the bound nonce. Throws on any mismatch.
+   */
+  verifyIdToken(idToken: string, expectedNonce: string): Promise<JWTPayload>;
 }
 
-/**
- * Verify an id_token against the provider's JWKS, issuer, and audience, then
- * check the bound nonce. Throws on any mismatch.
- */
-export async function verifyIdToken(idToken: string, expectedNonce: string): Promise<JWTPayload> {
-  const cfg = getAuthConfig();
-  const { payload } = await jwtVerify(idToken, getJwks(), {
-    issuer: cfg.oidc.issuer,
-    audience: cfg.oidc.clientId,
-  });
-  if (payload.nonce !== expectedNonce) {
-    throw new Error('id_token nonce mismatch');
-  }
-  return payload;
+/** Build the id_token verifier, caching the provider's remote JWKS. */
+export function createIdTokenVerifier(cfg: AuthConfig['oidc']): IdTokenVerifier {
+  const jwks = createRemoteJWKSet(new URL(cfg.jwksUrl));
+
+  return {
+    async verifyIdToken(idToken, expectedNonce) {
+      const { payload } = await jwtVerify(idToken, jwks, {
+        issuer: cfg.issuer,
+        audience: cfg.clientId,
+      });
+      if (payload.nonce !== expectedNonce) {
+        throw new Error('id_token nonce mismatch');
+      }
+      return payload;
+    },
+  };
 }

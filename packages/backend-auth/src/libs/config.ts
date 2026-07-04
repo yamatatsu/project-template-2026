@@ -1,12 +1,15 @@
 /**
- * Auth configuration, read from environment variables.
+ * Auth configuration.
  *
  * The BFF is implemented against the generic OIDC authorization-code + PKCE
  * flow, so the same code runs against Cognito (prod) and mock-oauth2-server
- * (local) — only these env values differ. See `.env.example`.
+ * (local) — only the `AuthConfig` values differ.
  *
- * Loaded lazily (and cached) so importing this module never throws at load
- * time; tests can set env before the first `getAuthConfig()` call.
+ * The package never reads `process.env` on its own: the host builds an
+ * `AuthConfig` (typically via `loadAuthConfigFromEnv`) and injects it through
+ * `createAuth`. This makes the dependency explicit — the host cannot forget to
+ * wire it (compile error) — and lets the host validate the whole config once,
+ * at startup, instead of failing on the first request.
  */
 export interface AuthConfig {
   readonly oidc: {
@@ -37,25 +40,29 @@ export interface AuthConfig {
   };
 }
 
-function required(name: string): string {
-  const value = process.env[name];
-  if (value === undefined || value === '') {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
+/**
+ * Build an `AuthConfig` from environment variables, validating up front.
+ *
+ * Every missing required variable is collected and reported together, so the
+ * host (which should call this at startup — see `apps/backend`) fails fast with
+ * the complete list instead of one-var-at-a-time on the first request.
+ */
+export function loadAuthConfigFromEnv(env: NodeJS.ProcessEnv = process.env): AuthConfig {
+  const missing: string[] = [];
+  const required = (name: string): string => {
+    const value = env[name];
+    if (value === undefined || value === '') {
+      missing.push(name);
+      return '';
+    }
+    return value;
+  };
+  const optional = (name: string, fallback: string): string => {
+    const value = env[name];
+    return value === undefined || value === '' ? fallback : value;
+  };
 
-function optional(name: string, fallback: string): string {
-  const value = process.env[name];
-  return value === undefined || value === '' ? fallback : value;
-}
-
-let cached: AuthConfig | undefined;
-
-export function getAuthConfig(): AuthConfig {
-  if (cached) return cached;
-
-  cached = {
+  const config: AuthConfig = {
     oidc: {
       issuer: required('OIDC_ISSUER'),
       authorizeUrl: required('OIDC_AUTHORIZE_URL'),
@@ -75,15 +82,16 @@ export function getAuthConfig(): AuthConfig {
     },
     dynamo: {
       tableName: required('SESSION_TABLE_NAME'),
-      endpoint: process.env.DYNAMODB_ENDPOINT || undefined,
+      endpoint: env.DYNAMODB_ENDPOINT || undefined,
       region: optional('AWS_REGION', 'ap-northeast-1'),
     },
   };
 
-  return cached;
-}
+  if (missing.length > 0) {
+    throw new Error(
+      `@icasu/backend-auth: missing required environment variable(s): ${missing.join(', ')}`,
+    );
+  }
 
-/** Test helper: clear the cached config so the next call re-reads env. */
-export function resetAuthConfig(): void {
-  cached = undefined;
+  return config;
 }

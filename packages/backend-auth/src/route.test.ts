@@ -1,17 +1,22 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+
+import { loadAuthConfigFromEnv } from './libs/config.ts';
+import { createCookies } from './libs/cookie.ts';
+import { createOidcClient, TokenError } from './libs/oidc.ts';
+import type { PendingAuth, SessionData, SessionStore } from './libs/session.ts';
+import { createRequireSession } from './middleware.ts';
+import { createAuthRoute } from './route.ts';
 
 /**
  * BFF auth-flow spec.
  *
- * These tests describe the OIDC authorization-code + PKCE flow end to end by
- * driving the exported Hono app (`authRoute`) with real cookies. Only the two
- * external boundaries are mocked:
+ * Drives the Hono app returned by `createAuthRoute` with real cookies to
+ * describe the OIDC authorization-code + PKCE flow end to end. Dependency
+ * injection replaces the two external boundaries — everything else runs for
+ * real (PKCE, state, cookie signing, redirect wiring, refresh logic):
  *
- *  - the session store (`./libs/session.ts`) → an in-memory Map instead of DynamoDB,
- *  - the token endpoint / id_token verification (`./libs/oidc.ts`, `./libs/jwks.ts`).
- *
- * Everything else — PKCE, state handling, cookie signing, the redirect wiring,
- * and the `requireSession` refresh logic — runs for real.
+ *  - the session store → an in-memory Map instead of DynamoDB,
+ *  - the token endpoint / id_token verification → vi.fn() stubs.
  */
 
 const ENV: Record<string, string> = {
@@ -29,56 +34,48 @@ const ENV: Record<string, string> = {
   SESSION_TABLE_NAME: 'sessions',
 };
 
-// Hoisted so the (hoisted) vi.mock factories below can reference them.
-const boundary = vi.hoisted(() => ({
-  exchangeCode: vi.fn(),
-  refreshTokens: vi.fn(),
-  verifyIdToken: vi.fn(),
-}));
+const config = loadAuthConfigFromEnv(ENV);
 
-// Session store: an in-memory stand-in for the DynamoDB-backed store.
-vi.mock('./libs/session.ts', () => {
-  const states = new Map<string, unknown>();
-  const sessions = new Map<string, unknown>();
+function createInMemoryStore(): SessionStore {
+  const states = new Map<string, PendingAuth>();
+  const sessions = new Map<string, SessionData>();
   return {
-    saveState: async (state: string, data: unknown) => void states.set(state, data),
-    consumeState: async (state: string) => {
-      const v = states.get(state);
-      states.delete(state);
-      return v;
+    async saveState(state, data) {
+      states.set(state, data);
     },
-    saveSession: async (id: string, data: unknown) => void sessions.set(id, data),
-    getSession: async (id: string) => sessions.get(id),
-    deleteSession: async (id: string) => void sessions.delete(id),
+    async consumeState(state) {
+      const value = states.get(state);
+      states.delete(state);
+      return value;
+    },
+    async saveSession(id, data) {
+      sessions.set(id, data);
+    },
+    async getSession(id) {
+      return sessions.get(id);
+    },
+    async deleteSession(id) {
+      sessions.delete(id);
+    },
   };
-});
+}
 
-// Keep buildAuthorizeUrl/buildLogoutUrl/TokenError real; stub the network calls.
-vi.mock('./libs/oidc.ts', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./libs/oidc.ts')>()),
-  exchangeCode: boundary.exchangeCode,
-  refreshTokens: boundary.refreshTokens,
-}));
-
-vi.mock('./libs/jwks.ts', () => ({ verifyIdToken: boundary.verifyIdToken }));
-
-const { authRoute } = await import('./route.ts');
-const { TokenError } = await import('./libs/oidc.ts');
-const { resetAuthConfig } = await import('./libs/config.ts');
+let authRoute: ReturnType<typeof createAuthRoute>;
+let exchangeCode: Mock;
+let refreshTokens: Mock;
+let verifyIdToken: Mock;
 
 beforeEach(() => {
-  for (const [key, value] of Object.entries(ENV)) {
-    process.env[key] = value;
-  }
-  resetAuthConfig();
-  vi.clearAllMocks();
-});
+  exchangeCode = vi.fn();
+  refreshTokens = vi.fn();
+  verifyIdToken = vi.fn();
 
-afterAll(() => {
-  for (const key of Object.keys(ENV)) {
-    delete process.env[key];
-  }
-  resetAuthConfig();
+  const cookies = createCookies(config.cookie);
+  const store = createInMemoryStore();
+  const oidc = { ...createOidcClient(config), exchangeCode, refreshTokens };
+  const verifier = { verifyIdToken };
+  const requireSession = createRequireSession({ cookies, store, oidc });
+  authRoute = createAuthRoute({ cookies, store, oidc, verifier, requireSession });
 });
 
 /** Take the `name=value` pair from a Set-Cookie response header. */
@@ -107,14 +104,14 @@ async function authenticate(
   returnTo = '/',
 ): Promise<string> {
   const state = await startLogin(returnTo);
-  boundary.exchangeCode.mockResolvedValue({
+  exchangeCode.mockResolvedValue({
     accessToken: 'access-token',
     refreshToken: 'refresh-token',
     idToken: 'id-token',
     expiresIn: 3600,
     ...tokens,
   });
-  boundary.verifyIdToken.mockResolvedValue(claims);
+  verifyIdToken.mockResolvedValue(claims);
   const res = await authRoute.request(`/callback?code=auth-code&state=${state}`);
   return cookieFrom(res);
 }
@@ -137,19 +134,19 @@ describe('GET /login', () => {
 describe('GET /callback', () => {
   it('exchanges the code, verifies the id_token, sets a session cookie, and redirects to returnTo', async () => {
     const state = await startLogin('/dashboard');
-    boundary.exchangeCode.mockResolvedValue({
+    exchangeCode.mockResolvedValue({
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
       idToken: 'id-token',
       expiresIn: 3600,
     });
-    boundary.verifyIdToken.mockResolvedValue({ sub: 'user-1', email: 'user@example.com' });
+    verifyIdToken.mockResolvedValue({ sub: 'user-1', email: 'user@example.com' });
 
     const res = await authRoute.request(`/callback?code=auth-code&state=${state}`);
 
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/dashboard');
-    expect(boundary.exchangeCode).toHaveBeenCalledWith('auth-code', expect.any(String));
+    expect(exchangeCode).toHaveBeenCalledWith('auth-code', expect.any(String));
     expect(cookieFrom(res)).toMatch(/^sid=/);
   });
 
@@ -167,13 +164,13 @@ describe('GET /callback', () => {
 
   it('refuses to redirect to an off-site returnTo (open-redirect guard)', async () => {
     const state = await startLogin('https://evil.example/phish');
-    boundary.exchangeCode.mockResolvedValue({
+    exchangeCode.mockResolvedValue({
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
       idToken: 'id-token',
       expiresIn: 3600,
     });
-    boundary.verifyIdToken.mockResolvedValue({ sub: 'user-1' });
+    verifyIdToken.mockResolvedValue({ sub: 'user-1' });
 
     const res = await authRoute.request(`/callback?code=auth-code&state=${state}`);
 
@@ -203,7 +200,7 @@ describe('GET /me', () => {
       { sub: 'user-2' },
       { refreshToken: 'refresh-1', expiresIn: 0 },
     );
-    boundary.refreshTokens.mockResolvedValue({
+    refreshTokens.mockResolvedValue({
       accessToken: 'access-2',
       refreshToken: 'refresh-2',
       idToken: 'id-2',
@@ -213,7 +210,7 @@ describe('GET /me', () => {
     const res = await authRoute.request('/me', { headers: { cookie } });
 
     expect(res.status).toBe(200);
-    expect(boundary.refreshTokens).toHaveBeenCalledWith('refresh-1');
+    expect(refreshTokens).toHaveBeenCalledWith('refresh-1');
     expect(await res.json()).toEqual({ userSub: 'user-2', email: undefined });
   });
 
@@ -222,7 +219,7 @@ describe('GET /me', () => {
       { sub: 'user-3' },
       { refreshToken: 'refresh-1', expiresIn: 0 },
     );
-    boundary.refreshTokens.mockRejectedValue(new TokenError(400, '{"error":"invalid_grant"}'));
+    refreshTokens.mockRejectedValue(new TokenError(400, '{"error":"invalid_grant"}'));
 
     const res = await authRoute.request('/me', { headers: { cookie } });
 

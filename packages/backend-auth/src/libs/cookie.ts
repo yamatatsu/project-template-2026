@@ -1,12 +1,20 @@
 import type { Context } from 'hono';
 import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie';
 
-import { getAuthConfig } from './config.ts';
+import type { AuthConfig } from './config.ts';
 
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
+/** Signed session-cookie helpers, bound to the cookie config. */
+export interface Cookies {
+  setSessionCookie(c: Context, sessionId: string): Promise<void>;
+  /** Read and verify the signed session id, or `undefined` if absent/tampered. */
+  readSessionCookie(c: Context): Promise<string | undefined>;
+  clearSessionCookie(c: Context): void;
+}
+
 /**
- * Session cookie helpers.
+ * Build the session cookie helpers.
  *
  * The cookie holds only an opaque, signed session id — never a token. It follows
  * the BFF security profile (draft-ietf-oauth-browser-based-apps §6.1.3.2):
@@ -18,29 +26,23 @@ const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
  * the cross-site IdP→/auth/callback redirect — the callback issues it — so
  * Strict never blocks the login flow.
  */
-export async function setSessionCookie(c: Context, sessionId: string): Promise<void> {
-  const cfg = getAuthConfig();
-  await setSignedCookie(c, cfg.cookie.name, sessionId, cfg.cookie.secret, {
-    httpOnly: true,
-    secure: cfg.cookie.secure,
-    sameSite: 'Strict',
-    path: '/',
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
-}
-
-/** Read and verify the signed session id, or `undefined` if absent/tampered. */
-export async function readSessionCookie(c: Context): Promise<string | undefined> {
-  const cfg = getAuthConfig();
-  const value = await getSignedCookie(c, cfg.cookie.secret, cfg.cookie.name);
-  return value === false ? undefined : value;
-}
-
-export function clearSessionCookie(c: Context): void {
-  clearCookieByName(c);
-}
-
-function clearCookieByName(c: Context): void {
-  const cfg = getAuthConfig();
-  deleteCookie(c, cfg.cookie.name, { path: '/' });
+export function createCookies(cfg: AuthConfig['cookie']): Cookies {
+  return {
+    async setSessionCookie(c, sessionId) {
+      await setSignedCookie(c, cfg.name, sessionId, cfg.secret, {
+        httpOnly: true,
+        secure: cfg.secure,
+        sameSite: 'Strict',
+        path: '/',
+        maxAge: SESSION_MAX_AGE_SECONDS,
+      });
+    },
+    async readSessionCookie(c) {
+      const value = await getSignedCookie(c, cfg.secret, cfg.name);
+      return value === false ? undefined : value;
+    },
+    clearSessionCookie(c) {
+      deleteCookie(c, cfg.name, { path: '/' });
+    },
+  };
 }
