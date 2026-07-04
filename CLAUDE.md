@@ -6,6 +6,24 @@
 
 pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `apps/frontend`（React + Vite + Tailwind v4 + shadcn/ui）。Hono RPC + TanStack Query でエンドツーエンド型安全。Lint/format は oxlint + oxfmt、テストは Vitest。
 
+## モノレポ構成
+
+`pnpm-workspace.yaml` の対象は `apps/*` と `packages/*` の2系統。デプロイ単位（実行可能な
+アプリ）を `apps/`、それらから `workspace:*` で参照される内部ライブラリを `packages/` に置く。
+内部パッケージは `@icasu/*` で名前空間を切り、ビルド無しの TS ソースを `exports` で直接公開する
+（`tsconfig.base.json` の `allowImportingTsExtensions` 前提）。
+
+| パッケージ                                       | 役割                                                                                                                          |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `apps/frontend`                                  | React SPA（Feature-Sliced Design）。バックの `AppType` を Hono RPC で型として取り込む。                                       |
+| `apps/backend`                                   | Hono の BFF。`@icasu/backend-auth` を `/auth` にマウントし、`tasks` API を提供。Node / Lambda。                               |
+| `apps/iac`                                       | AWS CDK（TypeScript）。フロント配信・API・Cognito・セッションテーブル等のインフラ。                                           |
+| `packages/db`（`@icasu/db`）                     | Drizzle のスキーマ / DB クライアント（`./schema`・`./client`・`./migrations`）。                                              |
+| `packages/backend-auth`（`@icasu/backend-auth`） | BFF 認証（OIDC 認可コード + PKCE）。`authRoute`（Hono app）と `requireSession` / `AuthEnv` を公開し、認証機能のテストも同梱。 |
+
+依存の向き: `apps/*` → `packages/*` の一方向のみ（`packages` から `apps` は参照しない）。
+各パッケージ固有の規約はそのパッケージの `CLAUDE.md` に書く（後述の「ドキュメントの置き場所」）。
+
 ## よく使うコマンド（リポジトリルートから）
 
 | 目的                      | コマンド                                     |
@@ -17,11 +35,10 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 | FSD アーキテクチャ検査    | `pnpm steiger`                               |
 | ローカル基盤の起動        | `pnpm local:up`（DB + DynamoDB + OIDC mock） |
 
-## ローカル開発（BFF 認証）
+## ローカル開発
 
-認証は OAuth BFF パターン（バックエンドが OAuth クライアントとしてトークンを保持し、ブラウザは
-HttpOnly セッション Cookie のみを持つ）。ローカルは実 Cognito の代わりに docker-compose の
-エミュレータ（DynamoDB Local + mock-oauth2-server）を使うため AWS 認証情報は不要。
+ローカルは docker-compose のエミュレータ（Postgres + DynamoDB Local + mock-oauth2-server）を
+使うため AWS 認証情報は不要。
 
 1. `pnpm local:up` — Postgres + DynamoDB Local + OIDC mock を起動し、セッションテーブルを作成。
 2. `apps/backend/.env` を用意（`apps/backend/.env.example` をコピー。OIDC/Cookie/DynamoDB の
@@ -30,14 +47,25 @@ HttpOnly セッション Cookie のみを持つ）。ローカルは実 Cognito 
 4. http://localhost:5001 へアクセス → 未認証なら mock のログイン画面へ。任意のユーザー名で
    ログインすると SPA に戻る。
 
-本番は実 Cognito（Hosted UI）を使い、同じ BFF コードが環境変数で切り替わる（詳細は `apps/iac`）。
+認証（OAuth BFF パターン）の仕組み・設計・本番 Cognito との切り替えは
+[`packages/backend-auth/CLAUDE.md`](packages/backend-auth/CLAUDE.md) を参照。
 
-## パッケージ別ルール
+## ドキュメントの置き場所
+
+- **プロジェクト全体に効くルール**（モノレポ構成・共通コマンド・ローカル開発・コミット/ツール
+  導入の方針など）はこのルート `CLAUDE.md` に書く。
+- **特定のローカルパッケージにしか効かないルール**は、そのパッケージ直下の `CLAUDE.md` に書く
+  （そのディレクトリ内で作業すると自動で読み込まれる）。ルート `CLAUDE.md` にはパッケージ固有の
+  詳細を持ち込まず、必要ならリンクで参照する。
+
+パッケージ別 `CLAUDE.md`:
 
 - **フロントエンド（`apps/frontend`）**: Feature-Sliced Design (FSD v2.1) に従う。詳細は
-  [`apps/frontend/CLAUDE.md`](apps/frontend/CLAUDE.md)（frontend 内で作業すると自動で読み込まれる）。
+  [`apps/frontend/CLAUDE.md`](apps/frontend/CLAUDE.md)。
 - **インフラ（`apps/iac`）**: AWS CDK (TypeScript)。設定は環境変数 `STAGE` のみ・CDK context 不使用、
-  `CfnOutput` 不使用など規約は [`apps/iac/CLAUDE.md`](apps/iac/CLAUDE.md)（iac 内で作業すると自動で読み込まれる）。
+  `CfnOutput` 不使用など規約は [`apps/iac/CLAUDE.md`](apps/iac/CLAUDE.md)。
+- **BFF 認証（`packages/backend-auth`）**: OIDC 認可コード + PKCE の Hono app。設計・公開 API・
+  テスト方針は [`packages/backend-auth/CLAUDE.md`](packages/backend-auth/CLAUDE.md)。
 
 ## コミットの方針
 

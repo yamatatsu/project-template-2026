@@ -1,0 +1,24 @@
+{
+  "name": "@icasu/backend-auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1074.0",
+    "@aws-sdk/lib-dynamodb": "^3.1074.0",
+    "hono": "^4.12.27",
+    "jose": "^6.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "vitest": "^4.1.9"
+  }
+}
