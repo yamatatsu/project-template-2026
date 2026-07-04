@@ -13,13 +13,14 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 内部パッケージは `@icasu/*` で名前空間を切り、ビルド無しの TS ソースを `exports` で直接公開する
 （`tsconfig.base.json` の `allowImportingTsExtensions` 前提）。
 
-| パッケージ                                       | 役割                                                                                                                              |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/frontend`                                  | React SPA（Feature-Sliced Design）。バックの `AppType` を Hono RPC で型として取り込む。                                           |
-| `apps/backend`                                   | Hono の BFF。`createApp(config)` が合成点で、`@icasu/backend-auth` を `/auth` にマウントし `tasks` API を提供。Node / Lambda。    |
-| `apps/iac`                                       | AWS CDK（TypeScript）。フロント配信・API・Cognito・セッションテーブル等のインフラ。                                               |
-| `packages/db`（`@icasu/db`）                     | Drizzle のスキーマ / DB クライアント（`./schema`・`./client`・`./migrations`）。                                                  |
-| `packages/backend-auth`（`@icasu/backend-auth`） | BFF 認証（OIDC 認可コード + PKCE）。設定注入の `createAuth(config)` と `loadAuthConfigFromEnv` を公開し、認証機能のテストも同梱。 |
+| パッケージ                                         | 役割                                                                                                                              |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/frontend`                                    | React SPA（Feature-Sliced Design）。バックの `AppType` を Hono RPC で型として取り込む。                                           |
+| `apps/backend`                                     | Hono の BFF。`createApp(config)` が合成点で、`@icasu/backend-auth` を `/auth` にマウントし `tasks` API を提供。Node / Lambda。    |
+| `apps/iac`                                         | AWS CDK（TypeScript）。フロント配信・API・Cognito・セッションテーブル等のインフラ。                                               |
+| `packages/db`（`@icasu/db`）                       | Drizzle のスキーマ / DB クライアント（`./schema`・`./client`・`./migrations`）。                                                  |
+| `packages/backend-auth`（`@icasu/backend-auth`）   | BFF 認証（OIDC 認可コード + PKCE）。設定注入の `createAuth(config)` と `loadAuthConfigFromEnv` を公開し、認証機能のテストも同梱。 |
+| `packages/simple-result`（`@icasu/simple-result`） | 失敗を throw せず値で返すための最小 `Result<T, E>`（`ok` / `err`）。全パッケージ共有の実体。                                      |
 
 依存の向き: `apps/*` → `packages/*` の一方向のみ（`packages` から `apps` は参照しない）。
 各パッケージ固有の規約はそのパッケージの `CLAUDE.md` に書く（後述の「ドキュメントの置き場所」）。
