@@ -1,0 +1,20 @@
+{
+  "interactiveLogin": true,
+  "httpServer": "NettyWrapper",
+  "tokenCallbacks": [
+    {
+      "issuerId": "default",
+      "requestMappings": [
+        {
+          "requestParam": "scope",
+          "match": "*",
+          "claims": {
+            "sub": "${subject}",
+            "email": "${subject}@example.com",
+            "email_verified": true
+          }
+        }
+      ]
+    }
+  ]
+}
