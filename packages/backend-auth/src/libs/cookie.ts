@@ -42,7 +42,10 @@ export function createCookies(cfg: AuthConfig['cookie']): Cookies {
       return value === false ? undefined : value;
     },
     clearSessionCookie(c) {
-      deleteCookie(c, cfg.name, { path: '/' });
+      // `__Host-` プレフィックス付きの Cookie は削除（= maxAge:0 の Set-Cookie）でも
+      // Secure 属性が必須。hono は名前を見て検証し、secure を渡さないと throw するため、
+      // set 側と同じく cfg.secure を渡す（本番の `__Host-sid` で 500 になるのを防ぐ）。
+      deleteCookie(c, cfg.name, { path: '/', secure: cfg.secure });
     },
   };
 }

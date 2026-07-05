@@ -241,4 +241,40 @@ describe('GET /logout', () => {
     const after = await authRoute.request('/me', { headers: { cookie } });
     expect(after.status).toBe(401);
   });
+
+  // 本番は Cookie 名に `__Host-` プレフィックスを使う（secure=true）。hono は Cookie 削除時も
+  // `__Host-` 名に Secure 属性を要求し、無いと throw する。clear 側が secure を渡し忘れると
+  // 本番だけログアウトが 500 になる回帰なので、プレフィックス付き構成でも通ることを固定する。
+  it('clears a __Host- prefixed cookie without throwing (secure attribute is required)', async () => {
+    const hostConfig = loadAuthConfigFromEnv({ ...ENV, COOKIE_NAME: '__Host-sid' });
+    const cookies = createCookies(hostConfig.cookie);
+    const store = createInMemoryStore();
+    const oidc = { ...createOidcClient(hostConfig), exchangeCode, refreshTokens };
+    const requireSession = createRequireSession({ cookies, store, oidc });
+    const route = createAuthRoute({
+      cookies,
+      store,
+      oidc,
+      verifier: { verifyIdToken },
+      requireSession,
+    });
+
+    const state = await (async () => {
+      const res = await route.request('/login');
+      return new URL(res.headers.get('location')!).searchParams.get('state')!;
+    })();
+    exchangeCode.mockResolvedValue({
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      idToken: 'id-token',
+      expiresIn: 3600,
+    });
+    verifyIdToken.mockResolvedValue({ sub: 'user-1' });
+    const cookie = cookieFrom(await route.request(`/callback?code=auth-code&state=${state}`));
+
+    const res = await route.request('/logout', { headers: { cookie } });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get('set-cookie')).toContain('Secure');
+  });
 });
