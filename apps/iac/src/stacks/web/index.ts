@@ -22,8 +22,8 @@ export interface WebStackProps extends StackProps {
  *  - 静的 SPA は S3（private、OAC）から配信。クライアントサイドルートが
  *    `index.html` に解決されるよう CloudFront Function でフォールバックする。
  *  - API Gateway（HTTP API）+ Hono バックエンドを動かす Lambda。
- *  - CloudFront は `/api/*` を API Gateway へ転送（プレフィックスは CloudFront
- *    Function で除去）し、API と静的コンテンツが単一オリジンを共有する。
+ *  - CloudFront は JSON API を `/api/*`（プレフィックス除去）、OAuth 遷移を `/auth/*`
+ *    （除去なし）として同一 API Gateway へ転送し、API と静的コンテンツが単一オリジンを共有する。
  */
 export class WebStack extends Stack {
   constructor(scope: Construct, id: string, props: WebStackProps) {
@@ -35,7 +35,7 @@ export class WebStack extends Stack {
       dsqlCluster: props.dsqlCluster,
     });
 
-    // --- CloudFront（静的 SPA + /api プロキシ） ----------------------------
+    // --- CloudFront（静的 SPA + /api・/auth プロキシ） ---------------------
     const cdn = new Cdn(this, 'Cdn', {
       stage: props.stage,
       apiHost: api.apiHost,
@@ -68,7 +68,7 @@ export class WebStack extends Stack {
       OIDC_CLIENT_ID: cognito.userPoolClient.userPoolClientId,
       OIDC_CLIENT_SECRET: cognito.userPoolClient.userPoolClientSecret.unsafeUnwrap(),
       OIDC_SCOPES: 'openid email profile',
-      AUTH_REDIRECT_URI: `${cdn.appUrl}/api/auth/callback`,
+      AUTH_REDIRECT_URI: `${cdn.appUrl}/auth/callback`,
       AUTH_LOGOUT_URL: `${cognito.domainBaseUrl}/logout?client_id=${cognito.userPoolClient.userPoolClientId}&logout_uri={redirect}`,
       APP_BASE_URL: cdn.appUrl,
       COOKIE_NAME: '__Host-sid',

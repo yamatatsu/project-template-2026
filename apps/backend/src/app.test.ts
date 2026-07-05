@@ -12,7 +12,7 @@ const TEST_ENV: Record<string, string> = {
   OIDC_JWKS_URL: 'http://localhost:8080/default/jwks',
   OIDC_CLIENT_ID: 'local-client',
   OIDC_CLIENT_SECRET: 'local-secret',
-  AUTH_REDIRECT_URI: 'http://localhost:5001/api/auth/callback',
+  AUTH_REDIRECT_URI: 'http://localhost:5001/auth/callback',
   AUTH_LOGOUT_URL: 'http://localhost:8080/default/endsession?post_logout_redirect_uri={redirect}',
   APP_BASE_URL: 'http://localhost:5001',
   COOKIE_SECRET: 'x'.repeat(32),

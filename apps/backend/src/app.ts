@@ -15,8 +15,14 @@ export interface AppConfig {
  * ルートをメソッドチェーンで定義しているのは、推論型（`AppType`）が Hono RPC クライアント
  * 経由でルート・レスポンスの完全な情報をフロントエンドへ運べるようにするため。
  *
- * `/auth/*` は BFF のエンドポイント（login/callback/logout/me）。`/tasks` をはじめとする
- * API ルートは、注入されたセッションミドルウェアで保護される。
+ * ルーティングは「ブラウザのフルページ遷移」と「JSON API」で分ける:
+ *  - `/auth/*` … OAuth のブラウザ遷移（login/callback/logout）。CloudFront はここを
+ *    プレフィックス除去せずそのまま API へ転送する（redirect_uri を素直な `/auth/callback`
+ *    に保つため）。
+ *  - `/me`・`/tasks` … RPC/fetch で叩く JSON API。CloudFront では `/api/*` として配信され
+ *    （`/api` プレフィックスは除去）、`AppType` 経由でフロントに型連携される。
+ *
+ * `/me`・`/tasks` は注入されたセッションミドルウェアで保護される。
  */
 export function createApp(config: AppConfig) {
   const auth = createAuth(config.auth);
@@ -24,7 +30,8 @@ export function createApp(config: AppConfig) {
   return new Hono()
     .use('*', cors())
     .get('/hello-world', (c) => c.json({ message: 'hello world' }))
-    .route('/auth', auth.route)
+    .route('/auth', auth.navRoute)
+    .route('/me', auth.meRoute)
     .route('/tasks', createTasksRoute(auth.requireSession));
 }
 

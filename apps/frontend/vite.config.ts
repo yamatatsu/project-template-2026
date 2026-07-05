@@ -27,11 +27,18 @@ export default defineConfig({
   server: {
     port: 5001,
     proxy: {
-      // 開発時は API 呼び出しをバックエンドへ転送する。
+      // 開発時は JSON API 呼び出しをバックエンドへ転送する。先頭 `/api` は除去して
+      // Hono に `/me`・`/tasks` を見せる（本番の CloudFront Function と同じ挙動）。
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      // OAuth のブラウザ遷移（login/callback/logout）。Hono のマウント位置に合わせ、
+      // プレフィックスは除去せずそのまま転送する。
+      '/auth': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
       },
     },
   },

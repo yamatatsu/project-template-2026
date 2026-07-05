@@ -10,7 +10,7 @@ export const sessionKeys = {
 };
 
 /**
- * 現在のユーザー（BFF の `GET /auth/me`）の query options。
+ * 現在のユーザー（BFF の `GET /api/me`）の query options。
  *
  * non-OK レスポンスはすべて「セッションが使えない」ことを意味するので、
  * `UnauthorizedError` として表面化させ、auth guard がログインへリダイレクトできる
@@ -20,7 +20,7 @@ export function sessionQuery() {
   return queryOptions({
     queryKey: sessionKeys.current,
     queryFn: async () => {
-      const res = await client.auth.me.$get();
+      const res = await client.me.$get();
       if (!res.ok) {
         throw new UnauthorizedError();
       }

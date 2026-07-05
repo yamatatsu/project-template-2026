@@ -58,18 +58,15 @@ export class Cognito extends Construct {
 
     // Confidential クライアント（`generateSecret`）: BFF がクライアントシークレットで
     // token endpoint に対して認証するため、ブラウザは一切トークンを持たない。
-    // コールバック / ログアウト URL は SPA ではなく BFF（`/api/auth/*`）を指す。
-    // localhost の URL はローカル BFF 向け（Vite が `/api` を BFF にプロキシする）。
+    // コールバック URL は SPA ではなく BFF の OAuth 遷移ルート（`/auth/callback`）を指す。
+    // localhost の URL はローカル BFF 向け（Vite が `/api`・`/auth` を BFF にプロキシする）。
     this.userPoolClient = this.userPool.addClient('WebClient', {
       generateSecret: true,
       preventUserExistenceErrors: true,
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
-        callbackUrls: [
-          `${props.appUrl}/api/auth/callback`,
-          'http://localhost:5001/api/auth/callback',
-        ],
+        callbackUrls: [`${props.appUrl}/auth/callback`, 'http://localhost:5001/auth/callback'],
         logoutUrls: [props.appUrl, 'http://localhost:5001'],
       },
     });

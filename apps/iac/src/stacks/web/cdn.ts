@@ -17,17 +17,22 @@ const SPA_FALLBACK_FN = join(here, '../../../cloudfront/spa-fallback.js');
 export interface CdnProps {
   /** 論理環境名（例: `dev`、`prod`）。 */
   readonly stage: string;
-  /** `/api/*` の転送先となる API Gateway ホスト（`<id>.execute-api.<region>.amazonaws.com`）。 */
+  /** `/api/*`・`/auth/*` の転送先となる API Gateway ホスト（`<id>.execute-api.<region>.amazonaws.com`）。 */
   readonly apiHost: string;
 }
 
 /**
- * 静的 SPA を配信し `/api/*` を転送する CloudFront distribution:
+ * 静的 SPA を配信し、バックエンドの2系統（`/api/*`・`/auth/*`）を同一 API Gateway へ
+ * 転送する CloudFront distribution:
  *
  *  - 静的 SPA は S3（private、OAC）から配信。クライアントサイドルートが
  *    `index.html` に解決されるよう CloudFront Function でフォールバックする。
- *  - CloudFront は `/api/*` を API Gateway へ転送（プレフィックスは CloudFront
- *    Function で除去）し、API と静的コンテンツが単一オリジンを共有する。
+ *  - `/api/*` は JSON API（RPC/fetch）。CloudFront Function で先頭 `/api` を除去して
+ *    転送し、Hono には `/me`・`/tasks` として見える。
+ *  - `/auth/*` は OAuth のブラウザ遷移（login/callback/logout）。**プレフィックスは
+ *    除去せず**そのまま転送し、Hono のマウント位置（`/auth`）と一致させる。こうすると
+ *    Cognito に登録する redirect_uri が素直な `/auth/callback` になる。
+ *  - API と静的コンテンツは単一オリジン（CloudFront）を共有する。
  *  - ビルド済みフロントエンド（`apps/frontend/dist`）があればアップロードする。
  */
 export class Cdn extends Construct {
@@ -58,8 +63,23 @@ export class Cdn extends Construct {
       runtime: cloudfront.FunctionRuntime.JS_2_0,
     });
 
+    // `/api/*`（strip あり）と `/auth/*`（strip なし）は同一 API Gateway origin を共有し、
+    // キャッシュ無効・Host 以外のビューワ要素を転送する点も共通。差分は strip 関数の有無だけ。
+    const apiOrigin = new origins.HttpOrigin(props.apiHost, {
+      protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+    });
+    const proxyBehaviorBase = {
+      origin: apiOrigin,
+      viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+      cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+      // Authorization などは API へ転送しつつ、Host ヘッダは CloudFront に
+      // 設定させる（API Gateway が正しくルーティングできるようにするため）。
+      originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+    };
+
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
-      comment: `${props.stage} app (SPA + /api)`,
+      comment: `${props.stage} app (SPA + /api + /auth)`,
       defaultRootObject: 'index.html',
       priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
       defaultBehavior: {
@@ -74,16 +94,9 @@ export class Cdn extends Construct {
         ],
       },
       additionalBehaviors: {
+        // JSON API: 先頭 `/api` を除去して Hono に `/me`・`/tasks` を見せる。
         '/api/*': {
-          origin: new origins.HttpOrigin(props.apiHost, {
-            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
-          }),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          // Authorization などは API へ転送しつつ、Host ヘッダは CloudFront に
-          // 設定させる（API Gateway が正しくルーティングできるようにするため）。
-          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          ...proxyBehaviorBase,
           functionAssociations: [
             {
               function: stripApiFn,
@@ -91,6 +104,8 @@ export class Cdn extends Construct {
             },
           ],
         },
+        // OAuth のブラウザ遷移: プレフィックスを除去せず、Hono に `/auth/*` をそのまま見せる。
+        '/auth/*': proxyBehaviorBase,
       },
     });
 

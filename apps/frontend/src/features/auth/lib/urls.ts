@@ -1,18 +1,17 @@
 /**
- * BFF の認証エンドポイント。
+ * BFF の OAuth 遷移エンドポイント。
  *
  * ログイン/ログアウトはフルページ遷移になる（プロバイダの hosted UI には
  * アプリ内ルートから到達できない）ため、RPC 呼び出しではなく素の URL として持つ。
- * `/api` 配下の same-origin（ローカルは Vite proxy、本番は CloudFront）。
+ * リダイレクト専用の `/auth` 配下の same-origin（ローカルは Vite proxy、本番は CloudFront）。
+ * JSON API（`/api`）とは別系統なので `/api` プレフィックスは付けない。
  */
-const API_BASE = '/api';
+const AUTH_BASE = '/auth';
 
 export const authUrls = {
   login: (returnTo?: string): string =>
-    returnTo
-      ? `${API_BASE}/auth/login?returnTo=${encodeURIComponent(returnTo)}`
-      : `${API_BASE}/auth/login`,
-  logout: (): string => `${API_BASE}/auth/logout`,
+    returnTo ? `${AUTH_BASE}/login?returnTo=${encodeURIComponent(returnTo)}` : `${AUTH_BASE}/login`,
+  logout: (): string => `${AUTH_BASE}/logout`,
 };
 
 /** ログインへのフルページリダイレクト。ユーザーがいた場所を returnTo として保持する。 */

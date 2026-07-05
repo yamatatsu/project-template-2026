@@ -8,11 +8,8 @@ const detailGet = vi.fn();
 
 vi.mock('@/shared/api', () => ({
   client: {
-    auth: {
-      me: {
-        $get: () =>
-          Promise.resolve(rpcResponse({ userSub: 'test-user', email: 'test@example.com' })),
-      },
+    me: {
+      $get: () => Promise.resolve(rpcResponse({ userSub: 'test-user', email: 'test@example.com' })),
     },
     tasks: Object.assign(
       { $get: vi.fn(), $post: vi.fn() },

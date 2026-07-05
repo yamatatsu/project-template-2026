@@ -14,7 +14,7 @@ const ENV: Record<string, string> = {
   OIDC_CLIENT_ID: 'local-client',
   OIDC_CLIENT_SECRET: 'local-secret',
   OIDC_SCOPES: 'openid email profile',
-  AUTH_REDIRECT_URI: 'http://localhost:5001/api/auth/callback',
+  AUTH_REDIRECT_URI: 'http://localhost:5001/auth/callback',
   AUTH_LOGOUT_URL: 'http://localhost:8080/default/endsession?post_logout_redirect_uri={redirect}',
   APP_BASE_URL: 'http://localhost:5001',
   COOKIE_SECRET: 'x'.repeat(32),
@@ -45,7 +45,7 @@ describe('buildAuthorizeUrl', () => {
     expect(`${url.origin}${url.pathname}`).toBe('http://localhost:8080/default/authorize');
     expect(url.searchParams.get('response_type')).toBe('code');
     expect(url.searchParams.get('client_id')).toBe('local-client');
-    expect(url.searchParams.get('redirect_uri')).toBe('http://localhost:5001/api/auth/callback');
+    expect(url.searchParams.get('redirect_uri')).toBe('http://localhost:5001/auth/callback');
     expect(url.searchParams.get('scope')).toBe('openid email profile');
     expect(url.searchParams.get('state')).toBe('s1');
     expect(url.searchParams.get('nonce')).toBe('n1');

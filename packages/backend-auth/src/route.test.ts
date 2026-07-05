@@ -5,7 +5,7 @@ import { createCookies } from './libs/cookie.ts';
 import { createOidcClient, TokenError } from './libs/oidc.ts';
 import type { PendingAuth, SessionData, SessionStore } from './libs/session.ts';
 import { createRequireSession } from './middleware.ts';
-import { createAuthRoute } from './route.ts';
+import { createAuthRoute, createMeRoute } from './route.ts';
 
 /**
  * BFF 認証フローの仕様。
@@ -26,7 +26,7 @@ const ENV: Record<string, string> = {
   OIDC_CLIENT_ID: 'local-client',
   OIDC_CLIENT_SECRET: 'local-secret',
   OIDC_SCOPES: 'openid email profile',
-  AUTH_REDIRECT_URI: 'http://localhost:5001/api/auth/callback',
+  AUTH_REDIRECT_URI: 'http://localhost:5001/auth/callback',
   AUTH_LOGOUT_URL: 'http://localhost:8080/default/endsession?post_logout_redirect_uri={redirect}',
   APP_BASE_URL: 'http://localhost:5001',
   COOKIE_SECRET: 'x'.repeat(32),
@@ -59,7 +59,10 @@ function createInMemoryStore(): SessionStore {
   };
 }
 
+// nav（login/callback/logout）と me（JSON API）は別ルートに分かれたが、cookies/store/oidc を
+// 共有するので、nav の /callback が発行した Cookie を me ルートがそのまま検証できる。
 let authRoute: ReturnType<typeof createAuthRoute>;
+let meRoute: ReturnType<typeof createMeRoute>;
 let exchangeCode: Mock;
 let refreshTokens: Mock;
 let verifyIdToken: Mock;
@@ -74,7 +77,8 @@ beforeEach(() => {
   const oidc = { ...createOidcClient(config), exchangeCode, refreshTokens };
   const verifier = { verifyIdToken };
   const requireSession = createRequireSession({ cookies, store, oidc });
-  authRoute = createAuthRoute({ cookies, store, oidc, verifier, requireSession });
+  authRoute = createAuthRoute({ cookies, store, oidc, verifier });
+  meRoute = createMeRoute({ requireSession });
 });
 
 /** レスポンスの Set-Cookie ヘッダから `name=value` の組を取り出す。 */
@@ -181,14 +185,14 @@ describe('GET /me', () => {
   it('returns the authenticated user for a valid session cookie', async () => {
     const cookie = await authenticate({ sub: 'user-1', email: 'user@example.com' });
 
-    const res = await authRoute.request('/me', { headers: { cookie } });
+    const res = await meRoute.request('/', { headers: { cookie } });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ userSub: 'user-1', email: 'user@example.com' });
   });
 
   it('responds 401 when no session cookie is present', async () => {
-    const res = await authRoute.request('/me');
+    const res = await meRoute.request('/');
     expect(res.status).toBe(401);
     expect(await res.json()).toEqual({ error: 'unauthenticated' });
   });
@@ -206,7 +210,7 @@ describe('GET /me', () => {
       expiresIn: 3600,
     });
 
-    const res = await authRoute.request('/me', { headers: { cookie } });
+    const res = await meRoute.request('/', { headers: { cookie } });
 
     expect(res.status).toBe(200);
     expect(refreshTokens).toHaveBeenCalledWith('refresh-1');
@@ -220,11 +224,11 @@ describe('GET /me', () => {
     );
     refreshTokens.mockRejectedValue(new TokenError(400, '{"error":"invalid_grant"}'));
 
-    const res = await authRoute.request('/me', { headers: { cookie } });
+    const res = await meRoute.request('/', { headers: { cookie } });
 
     expect(res.status).toBe(401);
     // セッションは消えている: 失効と無関係なリトライでも未認証のまま。
-    const retry = await authRoute.request('/me', { headers: { cookie } });
+    const retry = await meRoute.request('/', { headers: { cookie } });
     expect(retry.status).toBe(401);
   });
 });
@@ -238,7 +242,7 @@ describe('GET /logout', () => {
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toContain('/default/endsession');
     // ログアウト後は同じ Cookie ではもう認証されない。
-    const after = await authRoute.request('/me', { headers: { cookie } });
+    const after = await meRoute.request('/', { headers: { cookie } });
     expect(after.status).toBe(401);
   });
 
@@ -250,14 +254,7 @@ describe('GET /logout', () => {
     const cookies = createCookies(hostConfig.cookie);
     const store = createInMemoryStore();
     const oidc = { ...createOidcClient(hostConfig), exchangeCode, refreshTokens };
-    const requireSession = createRequireSession({ cookies, store, oidc });
-    const route = createAuthRoute({
-      cookies,
-      store,
-      oidc,
-      verifier: { verifyIdToken },
-      requireSession,
-    });
+    const route = createAuthRoute({ cookies, store, oidc, verifier: { verifyIdToken } });
 
     const state = await (async () => {
       const res = await route.request('/login');
