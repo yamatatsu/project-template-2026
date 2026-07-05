@@ -1,5 +1,5 @@
 {
-  "id": "57727023-844c-4936-a8f2-ba94ebf6eadb",
+  "id": "773bdafc-323f-440e-ba95-fdad4911388e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -29,16 +29,14 @@
         },
         "status": {
           "name": "status",
-          "type": "task_status",
-          "typeSchema": "public",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "default": "'todo'"
         },
         "priority": {
           "name": "priority",
-          "type": "task_priority",
-          "typeSchema": "public",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "default": "'medium'"
@@ -69,22 +67,20 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "tasks_status_check": {
+          "name": "tasks_status_check",
+          "value": "\"tasks\".\"status\" in ('todo', 'in_progress', 'done')"
+        },
+        "tasks_priority_check": {
+          "name": "tasks_priority_check",
+          "value": "\"tasks\".\"priority\" in ('low', 'medium', 'high')"
+        }
+      },
       "isRLSEnabled": false
     }
   },
-  "enums": {
-    "public.task_priority": {
-      "name": "task_priority",
-      "schema": "public",
-      "values": ["low", "medium", "high"]
-    },
-    "public.task_status": {
-      "name": "task_status",
-      "schema": "public",
-      "values": ["todo", "in_progress", "done"]
-    }
-  },
+  "enums": {},
   "schemas": {},
   "sequences": {},
   "roles": {},

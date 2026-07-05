@@ -10,7 +10,9 @@ src/
   app.ts            # CDK エントリ（cdk.json の `app` が指す）。Stack を組み立てるだけの薄い層
   config.ts         # デプロイ設定（後述）
   stacks/
-    db/index.ts     # DbStack（Aurora DSQL クラスタ）
+    db/
+      index.ts      # DbStack（Aurora DSQL クラスタ + マイグレーション Trigger）
+      migration.ts  # Migration construct（デプロイ中に drizzle マイグレーションを DSQL へ適用）
     web/
       index.ts      # WebStack 本体。construct を組み合わせるだけ
       api.ts        # Api construct（API Gateway HTTP API + Lambda）

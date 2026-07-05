@@ -172,6 +172,9 @@ importers:
       '@icasu/backend':
         specifier: workspace:*
         version: link:../backend
+      '@icasu/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       aws-cdk-lib:
         specifier: ^2.260.0
         version: 2.260.0(constructs@10.6.0)
@@ -219,6 +222,9 @@ importers:
       '@aws-sdk/dsql-signer':
         specifier: ^3.726.0
         version: 3.1075.0
+      '@icasu/simple-result':
+        specifier: workspace:*
+        version: link:../simple-result
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@electric-sql/pglite@0.5.3)(@types/pg@8.20.0)(pg@8.22.0)

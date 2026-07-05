@@ -1,9 +1,9 @@
-import { taskPriority, taskStatus } from '@icasu/db/schema';
+import { taskPriorityValues, taskStatusValues } from '@icasu/db/schema';
 import { z } from 'zod';
 
-/** enum のメンバー定義が一箇所に集まるよう、pgEnum の値を再利用する。 */
-export const taskStatusEnum = z.enum(taskStatus.enumValues);
-export const taskPriorityEnum = z.enum(taskPriority.enumValues);
+/** enum のメンバー定義が一箇所に集まるよう、DB スキーマの値配列を再利用する。 */
+export const taskStatusEnum = z.enum(taskStatusValues);
+export const taskPriorityEnum = z.enum(taskPriorityValues);
 
 export const createTaskSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(200),

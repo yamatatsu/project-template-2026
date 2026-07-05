@@ -2,6 +2,8 @@ import { Cluster } from '@aws-cdk/aws-dsql-alpha';
 import { RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 
+import { Migration } from './migration.ts';
+
 export interface DbStackProps extends StackProps {
   /** 論理環境名（例: `dev`、`prod`）。 */
   readonly stage: string;
@@ -32,5 +34,9 @@ export class DbStack extends Stack {
       deletionProtection: isProd,
       removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
     });
+
+    // デプロイ内で drizzle マイグレーションを適用する（WebStack はこのスタックに依存する
+    // ため、新しいアプリコードが公開される前にスキーマ適用が完了する）。
+    new Migration(this, 'Migration', { cluster: this.cluster });
   }
 }

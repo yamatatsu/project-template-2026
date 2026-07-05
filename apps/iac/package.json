@@ -12,6 +12,7 @@
   "dependencies": {
     "@aws-cdk/aws-dsql-alpha": "2.260.0-alpha.0",
     "@icasu/backend": "workspace:*",
+    "@icasu/db": "workspace:*",
     "aws-cdk-lib": "^2.260.0",
     "constructs": "^10.4.2",
     "hono": "^4.12.27"

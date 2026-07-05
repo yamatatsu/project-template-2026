@@ -42,10 +42,12 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 使うため AWS 認証情報は不要。
 
 1. `pnpm local:up` — Postgres + DynamoDB Local + OIDC mock を起動し、セッションテーブルを作成。
-2. `apps/backend/.env` を用意（`apps/backend/.env.example` をコピー。OIDC/Cookie/DynamoDB の
+2. `pnpm db:migrate` — ローカル Postgres に drizzle マイグレーションを適用（初回とスキーマ
+   変更時。`packages/db/.env` の `DATABASE_URL` を使う）。
+3. `apps/backend/.env` を用意（`apps/backend/.env.example` をコピー。OIDC/Cookie/DynamoDB の
    ローカル既定値入り）。
-3. `pnpm dev` — フロント（:5001）とバック（:3001 = BFF）を並列起動。
-4. http://localhost:5001 へアクセス → 未認証なら mock のログイン画面へ。任意のユーザー名で
+4. `pnpm dev` — フロント（:5001）とバック（:3001 = BFF）を並列起動。
+5. http://localhost:5001 へアクセス → 未認証なら mock のログイン画面へ。任意のユーザー名で
    ログインすると SPA に戻る。
 
 認証（OAuth BFF パターン）の仕組み・設計・本番 Cognito との切り替えは
@@ -82,6 +84,9 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
   [`apps/frontend/CLAUDE.md`](apps/frontend/CLAUDE.md)。
 - **インフラ（`apps/iac`）**: AWS CDK (TypeScript)。設定は環境変数 `STAGE` のみ・CDK context 不使用、
   `CfnOutput` 不使用など規約は [`apps/iac/CLAUDE.md`](apps/iac/CLAUDE.md)。
+- **DB（`packages/db`）**: drizzle のスキーマとマイグレーション。DSQL 互換のスキーマルール
+  （`pgEnum`/FK/連番 PK 不可など）と自前マイグレーションランナー・適用フロー（CDK デプロイ中に
+  自動適用）は [`packages/db/CLAUDE.md`](packages/db/CLAUDE.md)。
 - **BFF 認証（`packages/backend-auth`）**: OIDC 認可コード + PKCE の Hono app。設計・公開 API・
   テスト方針は [`packages/backend-auth/CLAUDE.md`](packages/backend-auth/CLAUDE.md)。
 

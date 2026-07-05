@@ -4,7 +4,7 @@
 
 | スタック            | リソース                                                                                                  |
 | ------------------- | --------------------------------------------------------------------------------------------------------- |
-| `Icasu-<Stage>-Db`  | Aurora **DSQL** クラスタ（サーバーレスな分散 Postgres）                                                   |
+| `Icasu-<Stage>-Db`  | Aurora **DSQL** クラスタ（サーバーレスな分散 Postgres）+ マイグレーション **Trigger**                     |
 | `Icasu-<Stage>-Web` | **Cognito**、**S3 + CloudFront**（静的 SPA）、**API Gateway + Lambda**（BFF）、**DynamoDB**（セッション） |
 
 ## アーキテクチャ
@@ -76,20 +76,20 @@ STAGE=prod cdk deploy --all
    ブラウザは JWT を一切持たない。
 5. **カスタムドメイン / ACM 証明書なし** — CloudFront のデフォルトドメインを使う。
 
-## ⚠️ DSQL のアプリ側 follow-up
+## スキーマのマイグレーション
 
-ここにある**インフラ**はそのままデプロイ可能だが、既存のアプリスキーマとマイグレーション
-フローには DSQL 固有の調整が必要で、それまで API は DSQL に対して動作しない
-（DSQL は Postgres 互換だがドロップイン置き換えではない）:
+`Icasu-<Stage>-Db` にはマイグレーション用の Lambda + CDK `Trigger`
+（[`src/stacks/db/migration.ts`](src/stacks/db/migration.ts)）が含まれ、`cdk deploy` の中で
+`packages/db` の drizzle マイグレーションを DSQL へ自動適用する。手動適用は不要。
 
-- **`CREATE TYPE ... ENUM` は不可。** `packages/db/src/schema.ts` は `pgEnum`
-  （`task_status`、`task_priority`）を使っているため、`text` + `CHECK` に変換する。
-- **シーケンス / `SERIAL` は不可。** `uuid().defaultRandom()` の PK は問題ない。
-- **外部キーは不可。**
-- **1 トランザクションにつき DDL は 1 文まで。** Drizzle の node-postgres migrator は
-  マイグレーションファイルを単一トランザクションで包むため、ファイルに複数の DDL 文が
-  あると DSQL に拒否される。`drizzle-orm/.../migrator` ではなく、DSQL を考慮したランナー
-  （1 文ずつ別トランザクション）でマイグレーションを実行すること。
+- マイグレーション SQL は Lambda バンドルに同梱される。SQL に変更がなければ Trigger は
+  再実行されず、デプロイに影響しない。
+- マイグレーションが失敗するとデプロイ自体が失敗する。適用済みの DDL はロールバック
+  されない（forward-only 運用）。
+- `WebStack` は `DbStack` に依存するため、新しいアプリコードが公開される前にスキーマ適用が
+  完了する。
 
+スキーマを DSQL 互換に保つルール（`pgEnum` 不可・FK 不可・1 トランザクション 1 DDL など）と
+ランナーの設計は [`packages/db/CLAUDE.md`](../../packages/db/CLAUDE.md) を参照。
 ランタイムの接続自体（IAM トークン認証、SSL）は `DSQL_ENDPOINT` が設定されていれば
 `packages/db/src/client.ts` が処理する。
