@@ -2,7 +2,20 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
-# esbuild ships a platform-specific binary via a postinstall script; allow it so
-# CDK's NodejsFunction can bundle the API Lambda locally (no Docker needed).
+# esbuild は postinstall スクリプトでプラットフォーム別バイナリを配置する。CDK の
+# NodejsFunction が API Lambda をローカルでバンドルできるよう（Docker 不要）許可する。
 onlyBuiltDependencies:
   - esbuild
+
+# vite（8 系）とそのバンドラ rolldown、wasm フォールバックバインディングのツールチェーン
+# （napi-rs / emnapi / tybys）は頻繁にリリースされ、プラットフォーム別バイナリも大量に publish
+# するため minimumReleaseAge 制約に常に引っかかる。いずれも vite 公式のビルドツールチェーンで
+# 信頼できるため除外する。
+minimumReleaseAgeExclude:
+  - 'vite'
+  - '@vitejs/*'
+  - 'rolldown'
+  - '@rolldown/*'
+  - '@napi-rs/*'
+  - '@emnapi/*'
+  - '@tybys/*'
