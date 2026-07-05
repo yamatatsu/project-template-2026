@@ -1,13 +1,13 @@
 # @icasu/iac
 
-AWS CDK (TypeScript) infrastructure for the app. Two stacks:
+このアプリの AWS CDK（TypeScript）インフラ。スタックは2つ:
 
-| Stack               | Resources                                                               |
-| ------------------- | ----------------------------------------------------------------------- |
-| `Icasu-<Stage>-Db`  | Aurora **DSQL** cluster (serverless, distributed Postgres)              |
-| `Icasu-<Stage>-Web` | **Cognito**, **S3 + CloudFront** (static SPA), **API Gateway + Lambda** |
+| スタック            | リソース                                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------------------------- |
+| `Icasu-<Stage>-Db`  | Aurora **DSQL** クラスタ（サーバーレスな分散 Postgres）                                                   |
+| `Icasu-<Stage>-Web` | **Cognito**、**S3 + CloudFront**（静的 SPA）、**API Gateway + Lambda**（BFF）、**DynamoDB**（セッション） |
 
-## Architecture
+## アーキテクチャ
 
 ```
                          ┌──────────────────────── CloudFront ───────────────────────┐
@@ -21,20 +21,20 @@ AWS CDK (TypeScript) infrastructure for the app. Two stacks:
                                                                     Aurora DSQL
 ```
 
-API and static content share **one origin**: CloudFront forwards `/api/*` to API
-Gateway (stripping the `/api` prefix via a CloudFront Function), everything else
-to S3. This matches the frontend, whose RPC client already targets `/api` in
-production (`apps/frontend/src/shared/api/index.ts`). The Lambda runs the _same_
-Hono `app` as local dev (`apps/backend`), so backend code is unchanged.
+API と静的コンテンツは**単一オリジン**を共有する: CloudFront は `/api/*` を API Gateway へ
+転送し（`/api` プレフィックスは CloudFront Function で除去）、それ以外はすべて S3 へ向ける。
+これはフロントエンドの構成と一致しており、RPC クライアントは本番で既に `/api` を向いている
+（`apps/frontend/src/shared/api/index.ts`）。Lambda はローカル開発（`apps/backend`）と
+_同じ_ Hono `app` を実行するため、バックエンドのコードは無変更で済む。
 
-## Prerequisites
+## 前提条件
 
-- An AWS account bootstrapped for CDK: `pnpm --filter @icasu/iac exec cdk bootstrap`
-- Credentials in the environment (`AWS_PROFILE` / `AWS_REGION` or SSO).
-- CDK executes the app with Node's native TS support (`node src/app.ts`, see
-  `cdk.json`), the same way the backend runs `.ts` directly — no ts-node required.
+- CDK 用に bootstrap 済みの AWS アカウント: `pnpm --filter @icasu/iac exec cdk bootstrap`
+- 環境に認証情報があること（`AWS_PROFILE` / `AWS_REGION` または SSO）。
+- CDK は Node のネイティブ TS サポートでアプリを実行する（`node src/app.ts`、`cdk.json` 参照）。
+  バックエンドが `.ts` を直接実行するのと同じ方式で、ts-node は不要。
 
-## Deploy
+## デプロイ
 
 ```sh
 # from the repo root
@@ -46,48 +46,50 @@ pnpm cdk:deploy                     # deploy both stacks (dev)
 pnpm --filter @icasu/frontend build && pnpm cdk:deploy
 ```
 
-## Configuration
+## 設定
 
-The only runtime input is the `STAGE` environment variable (`dev`, `prod`, or
-unset → `dev`). All other values (`region`, `account`, `stackPrefix`) are
-constants defined per stage in [`src/config.ts`](src/config.ts) (`devConfig` /
-`prodConfig`) — edit them there.
+ランタイム入力は環境変数 `STAGE` のみ（`dev`・`prod`・未設定 → `dev`）。それ以外の値
+（`region`・`account`・`stackPrefix`）は [`src/config.ts`](src/config.ts) に stage ごとの
+定数（`devConfig` / `prodConfig`）として定義してある — 変更はそこで行う。
 
-The Cognito JWT authorizer is always attached to `/api/*`.
+認証は **BFF パターン**を採用する: Lambda（Hono）が confidential な OAuth クライアントとして
+Cognito の認可コード + PKCE フローを実行し、トークンは DynamoDB に保存、ブラウザには HttpOnly
+なセッション Cookie だけを渡す。API Gateway の JWT authorizer は使わない — 認証は Hono の
+セッションミドルウェアが担う。
 
 ```sh
 STAGE=prod cdk deploy --all
 ```
 
-## Assumptions made (change if needed)
+## 採用した前提（必要なら変更する）
 
-These were chosen as sensible defaults because the build request couldn't be
-clarified interactively:
+構築依頼を対話的に確認できなかったため、妥当なデフォルトとして以下を選択した:
 
-1. **Region `ap-northeast-1` (Tokyo), single environment.** Multi-region DSQL is
-   not set up; the per-stage constants in `src/config.ts` cover basic splits.
-2. **HTTP API (API Gateway v2)** over REST API — cheaper, lower latency.
-3. **`/api` prefix stripped at CloudFront** (a CloudFront Function), so the
-   backend keeps serving root paths (`/tasks`). No `basePath` in Hono.
-4. **`/api/*` is always protected by the Cognito JWT authorizer.** Cognito
-   (user pool + hosted-UI client + JWT authorizer) is fully provisioned; the
-   frontend must send `Authorization: Bearer <jwt>`.
-5. **No custom domain / ACM cert** — the default CloudFront domain is used.
+1. **リージョンは `ap-northeast-1`（東京）、単一環境。** マルチリージョン DSQL は
+   構成していない。基本的な環境分割は `src/config.ts` の stage ごとの定数でカバーする。
+2. REST API ではなく **HTTP API（API Gateway v2）** — 安価で低レイテンシ。
+3. **`/api` プレフィックスは CloudFront で除去**（CloudFront Function）。これにより
+   バックエンドはルートパス（`/tasks`）のまま提供でき、Hono に `basePath` は不要。
+4. **認証は BFF パターン（API Gateway の authorizer なし）。** Lambda（Hono）は
+   confidential な OAuth クライアントで、Cognito の認可コード + PKCE フローを実行し、
+   トークンは DynamoDB に保持、ブラウザには HttpOnly なセッション Cookie のみを渡す —
+   ブラウザは JWT を一切持たない。
+5. **カスタムドメイン / ACM 証明書なし** — CloudFront のデフォルトドメインを使う。
 
-## ⚠️ DSQL application-level follow-ups
+## ⚠️ DSQL のアプリ側 follow-up
 
-The **infrastructure** here is deployable as-is, but the existing app schema and
-migration flow need DSQL-specific adjustments before the API will work against
-DSQL (DSQL is Postgres-compatible but not a drop-in):
+ここにある**インフラ**はそのままデプロイ可能だが、既存のアプリスキーマとマイグレーション
+フローには DSQL 固有の調整が必要で、それまで API は DSQL に対して動作しない
+（DSQL は Postgres 互換だがドロップイン置き換えではない）:
 
-- **No `CREATE TYPE ... ENUM`.** `packages/db/src/schema.ts` uses `pgEnum`
-  (`task_status`, `task_priority`); convert these to `text` + `CHECK`.
-- **No sequences / `SERIAL`.** The `uuid().defaultRandom()` PK is fine.
-- **No foreign keys.**
-- **One DDL statement per transaction.** Drizzle's node-postgres migrator wraps
-  a migration file in a single transaction, which DSQL rejects when the file has
-  multiple DDL statements. Run migrations with a DSQL-aware runner (one
-  statement per transaction) instead of `drizzle-orm/.../migrator`.
+- **`CREATE TYPE ... ENUM` は不可。** `packages/db/src/schema.ts` は `pgEnum`
+  （`task_status`、`task_priority`）を使っているため、`text` + `CHECK` に変換する。
+- **シーケンス / `SERIAL` は不可。** `uuid().defaultRandom()` の PK は問題ない。
+- **外部キーは不可。**
+- **1 トランザクションにつき DDL は 1 文まで。** Drizzle の node-postgres migrator は
+  マイグレーションファイルを単一トランザクションで包むため、ファイルに複数の DDL 文が
+  あると DSQL に拒否される。`drizzle-orm/.../migrator` ではなく、DSQL を考慮したランナー
+  （1 文ずつ別トランザクション）でマイグレーションを実行すること。
 
-The runtime connection itself (IAM-token auth, SSL) is handled in
-`packages/db/src/client.ts` whenever `DSQL_ENDPOINT` is set.
+ランタイムの接続自体（IAM トークン認証、SSL）は `DSQL_ENDPOINT` が設定されていれば
+`packages/db/src/client.ts` が処理する。

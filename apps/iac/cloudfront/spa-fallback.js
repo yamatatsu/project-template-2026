@@ -1,7 +1,7 @@
-// CloudFront Function (viewer-request) for the default (S3) behavior.
-// Serves a single-page app: requests for a directory or an extensionless path
-// (client-side routes like `/tasks/123`) are rewritten to `/index.html`.
-// Requests for real files (`.js`, `.css`, `.png`, ...) pass through unchanged.
+// default（S3）behavior 用の CloudFront Function（viewer-request）。
+// SPA を配信するためのもの: ディレクトリや拡張子のないパス（`/tasks/123` の
+// ようなクライアントサイドルート）へのリクエストは `/index.html` に書き換える。
+// 実ファイル（`.js`・`.css`・`.png` など）へのリクエストはそのまま通す。
 function handler(event) {
   var request = event.request;
   var uri = request.uri;

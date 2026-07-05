@@ -9,23 +9,25 @@ import {
 import { Construct } from 'constructs';
 
 export interface CognitoProps {
-  /** Logical environment name (e.g. `dev`, `prod`). */
+  /** 論理環境名（例: `dev`、`prod`）。 */
   readonly stage: string;
-  /** CloudFront URL, used for the app client's OAuth callback/logout URLs. */
+  /** CloudFront の URL。アプリクライアントの OAuth コールバック / ログアウト URL に使う。 */
   readonly appUrl: string;
 }
 
 /**
- * Cognito user pool + hosted UI client for authentication.
+ * 認証用の Cognito user pool + hosted UI クライアント。
  *
- * The app client needs the CloudFront URL for its callback/logout URLs, so this
- * construct is created after the distribution exists.
+ * アプリクライアントはコールバック / ログアウト URL に CloudFront の URL を必要と
+ * するため、この construct は distribution ができた後に作成する。
  */
 export class Cognito extends Construct {
-  /** The user pool. */
+  /** User pool。 */
   readonly userPool: UserPool;
-  /** The hosted-UI web app client. */
+  /** Hosted UI 用の Web アプリクライアント。 */
   readonly userPoolClient: UserPoolClient;
+  /** Hosted UI のベース URL（`https://<prefix>.auth.<region>.amazoncognito.com`）。 */
+  readonly domainBaseUrl: string;
 
   constructor(scope: Construct, id: string, props: CognitoProps) {
     super(scope, id);
@@ -49,18 +51,26 @@ export class Cognito extends Construct {
       removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
     });
 
-    this.userPool.addDomain('HostedUiDomain', {
+    const domain = this.userPool.addDomain('HostedUiDomain', {
       cognitoDomain: { domainPrefix: `icasu-${props.stage}-${account}` },
     });
+    this.domainBaseUrl = domain.baseUrl();
 
+    // Confidential クライアント（`generateSecret`）: BFF がクライアントシークレットで
+    // token endpoint に対して認証するため、ブラウザは一切トークンを持たない。
+    // コールバック / ログアウト URL は SPA ではなく BFF（`/api/auth/*`）を指す。
+    // localhost の URL はローカル BFF 向け（Vite が `/api` を BFF にプロキシする）。
     this.userPoolClient = this.userPool.addClient('WebClient', {
-      authFlows: { userSrp: true },
+      generateSecret: true,
       preventUserExistenceErrors: true,
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
-        callbackUrls: [props.appUrl, 'http://localhost:5173'],
-        logoutUrls: [props.appUrl, 'http://localhost:5173'],
+        callbackUrls: [
+          `${props.appUrl}/api/auth/callback`,
+          'http://localhost:5001/api/auth/callback',
+        ],
+        logoutUrls: [props.appUrl, 'http://localhost:5001'],
       },
     });
   }

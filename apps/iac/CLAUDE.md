@@ -42,8 +42,11 @@ CDK はネイティブ TS 実行（`node src/app.ts`、`cdk.json` 参照）。ts
   `private` にする。属性を消すときは参照箇所を grep で確認してから。
 - **CloudFront まわりなど凝集した一塊は construct に切り出す**（例: `Cdn`）。
   `WebStack` 本体は construct を組み立て依存を繋ぐだけの薄い層に保つ。
-- **API の authorizer は常に付与する**。`/api/*` には必ず Cognito JWT authorizer を
-  付ける。「認証あり/なし」を切り替えるフラグ（旧 `apiAuth`）は作らない。
+- **API 認証は BFF（Hono）で行う**。本構成は OAuth BFF パターンを採用する。ブラウザは
+  セッション Cookie のみを持ちトークンを受け取らないため、API Gateway に JWT authorizer は
+  付けない（ブラウザは JWT を持たない）。認証は Lambda 内の Hono セッション検証ミドルウェアが
+  担う。Cognito はトークン発行（Hosted UI + authorization code grant + PKCE）に用い、Lambda は
+  機密クライアントとして token endpoint と通信する。
 
 ## ドキュメントとの整合
 

@@ -15,23 +15,23 @@ const STRIP_API_FN = join(here, '../../../cloudfront/strip-api-prefix.js');
 const SPA_FALLBACK_FN = join(here, '../../../cloudfront/spa-fallback.js');
 
 export interface CdnProps {
-  /** Logical environment name (e.g. `dev`, `prod`). */
+  /** 論理環境名（例: `dev`、`prod`）。 */
   readonly stage: string;
-  /** API Gateway host (`<id>.execute-api.<region>.amazonaws.com`) for `/api/*`. */
+  /** `/api/*` の転送先となる API Gateway ホスト（`<id>.execute-api.<region>.amazonaws.com`）。 */
   readonly apiHost: string;
 }
 
 /**
- * CloudFront distribution serving the static SPA and forwarding `/api/*`:
+ * 静的 SPA を配信し `/api/*` を転送する CloudFront distribution:
  *
- *  - S3 (private, OAC) for the static SPA, with a CloudFront Function fallback
- *    so client-side routes resolve to `index.html`.
- *  - CloudFront forwards `/api/*` to API Gateway (prefix stripped by a
- *    CloudFront Function) so API and static content share one origin.
- *  - Uploads a pre-built frontend (`apps/frontend/dist`) when present.
+ *  - 静的 SPA は S3（private、OAC）から配信。クライアントサイドルートが
+ *    `index.html` に解決されるよう CloudFront Function でフォールバックする。
+ *  - CloudFront は `/api/*` を API Gateway へ転送（プレフィックスは CloudFront
+ *    Function で除去）し、API と静的コンテンツが単一オリジンを共有する。
+ *  - ビルド済みフロントエンド（`apps/frontend/dist`）があればアップロードする。
  */
 export class Cdn extends Construct {
-  /** Public app URL (`https://<distribution-domain>`). */
+  /** アプリの公開 URL（`https://<distribution-domain>`）。 */
   readonly appUrl: string;
 
   constructor(scope: Construct, id: string, props: CdnProps) {
@@ -39,7 +39,7 @@ export class Cdn extends Construct {
 
     const isProd = props.stage === 'prod';
 
-    // --- Static site bucket ----------------------------------------------
+    // --- 静的サイト用バケット ----------------------------------------------
     const siteBucket = new Bucket(this, 'SiteBucket', {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       encryption: BucketEncryption.S3_MANAGED,
@@ -81,8 +81,8 @@ export class Cdn extends Construct {
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          // Forward Authorization etc. to the API, but let CloudFront set the
-          // Host header so API Gateway routes the request correctly.
+          // Authorization などは API へ転送しつつ、Host ヘッダは CloudFront に
+          // 設定させる（API Gateway が正しくルーティングできるようにするため）。
           originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           functionAssociations: [
             {
@@ -96,7 +96,7 @@ export class Cdn extends Construct {
 
     this.appUrl = `https://${distribution.distributionDomainName}`;
 
-    // --- Optional: upload a pre-built frontend ----------------------------
+    // --- 任意: ビルド済みフロントエンドのアップロード ----------------------
     if (existsSync(FRONTEND_DIST)) {
       new BucketDeployment(this, 'DeploySite', {
         sources: [Source.asset(FRONTEND_DIST)],

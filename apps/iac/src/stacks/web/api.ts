@@ -3,8 +3,9 @@ import { fileURLToPath } from 'node:url';
 
 import type { ICluster } from '@aws-cdk/aws-dsql-alpha';
 import { Duration, Stack } from 'aws-cdk-lib';
-import { HttpApi, HttpMethod, type IHttpRouteAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2';
+import { HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Construct } from 'constructs';
@@ -14,32 +15,34 @@ const LAMBDA_ENTRY = join(here, '../../../../backend/src/lambda.ts');
 const DEPS_LOCK_FILE = join(here, '../../../../../pnpm-lock.yaml');
 
 export interface ApiProps {
-  /** Logical environment name (e.g. `dev`, `prod`). */
+  /** 論理環境名（例: `dev`、`prod`）。 */
   readonly stage: string;
-  /** DSQL cluster from {@link DbStack}. */
+  /** {@link DbStack} の DSQL クラスタ。 */
   readonly dsqlCluster: ICluster;
 }
 
 /**
- * API Gateway (HTTP API) + Lambda running the Hono backend.
+ * API Gateway（HTTP API）+ Hono バックエンド（BFF）を動かす Lambda。
  *
- * Routes are not added in the constructor: the JWT authorizer depends on the
- * CloudFront URL (via Cognito), which in turn depends on this API's host. Call
- * {@link addRoutes} once the authorizer is known.
+ * ルートと OIDC 環境変数はコンストラクタでは追加しない: それらの設定は
+ * （Cognito 経由で）CloudFront の URL に依存し、その CloudFront はこの API の
+ * ホストに依存するため。Cognito とセッションストアが揃ってから
+ * {@link addEnvironment} / {@link grantSessionStore} / {@link addRoutes} を呼ぶこと。
  */
 export class Api extends Construct {
-  /** API Gateway host (`<id>.execute-api.<region>.amazonaws.com`). */
+  /** API Gateway のホスト（`<id>.execute-api.<region>.amazonaws.com`）。 */
   readonly apiHost: string;
 
   private readonly httpApi: HttpApi;
   private readonly integration: HttpLambdaIntegration;
+  private readonly apiFn: NodejsFunction;
 
   constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id);
 
     const { region } = Stack.of(this);
 
-    const apiFn = new NodejsFunction(this, 'ApiFn', {
+    this.apiFn = new NodejsFunction(this, 'ApiFn', {
       entry: LAMBDA_ENTRY,
       handler: 'handler',
       runtime: Runtime.NODEJS_22_X,
@@ -56,7 +59,7 @@ export class Api extends Construct {
         format: OutputFormat.CJS,
         target: 'node22',
         sourceMap: true,
-        // pg lazily requires its optional native binding; keep it external.
+        // pg はオプショナルなネイティブバインディングを遅延 require するため external に残す。
         externalModules: ['pg-native'],
       },
     });
@@ -66,23 +69,38 @@ export class Api extends Construct {
     // grant と接続ロールは必ず揃えること）。
     // TODO: AWS は admin を日常運用に使わずカスタム DB ロール + dsql:DbConnect を推奨。
     // 将来 app 用ロールを作成し DSQL_USER を渡したうえで grantConnect に切り替える。
-    props.dsqlCluster.grantConnectAdmin(apiFn);
+    props.dsqlCluster.grantConnectAdmin(this.apiFn);
 
     this.httpApi = new HttpApi(this, 'HttpApi', {
       description: `${props.stage} task API`,
     });
     this.apiHost = `${this.httpApi.apiId}.execute-api.${region}.amazonaws.com`;
-    this.integration = new HttpLambdaIntegration('ApiIntegration', apiFn);
+    this.integration = new HttpLambdaIntegration('ApiIntegration', this.apiFn);
   }
 
-  /** Wire the proxy routes, protected by a Cognito JWT authorizer. */
-  addRoutes(authorizer: IHttpRouteAuthorizer): void {
+  /** ランタイム環境変数を注入する（Cognito / DynamoDB が揃った後に呼ぶ）。 */
+  addEnvironment(vars: Record<string, string>): void {
+    for (const [key, value] of Object.entries(vars)) {
+      this.apiFn.addEnvironment(key, value);
+    }
+  }
+
+  /** Lambda にセッションストアへの読み書き権限を付与する。 */
+  grantSessionStore(table: ITable): void {
+    table.grantReadWriteData(this.apiFn);
+  }
+
+  /**
+   * プロキシルートを配線する。API Gateway の authorizer は付けない: これは BFF であり、
+   * ブラウザはセッション Cookie しか持たない（JWT を持たない）ため。認証は Lambda 内の
+   * Hono セッションミドルウェアが行う。
+   */
+  addRoutes(): void {
     for (const path of ['/', '/{proxy+}']) {
       this.httpApi.addRoutes({
         path,
         methods: [HttpMethod.ANY],
         integration: this.integration,
-        authorizer,
       });
     }
   }

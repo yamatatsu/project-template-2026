@@ -1,18 +1,18 @@
 /**
- * Deployment configuration.
+ * デプロイ設定。
  *
- * The only runtime input is the `STAGE` environment variable; every other value
- * is a constant defined in this file and selected by stage. Deploy with:
+ * ランタイム入力は環境変数 `STAGE` のみで、他の値はすべてこのファイル内の定数として
+ * 定義し stage で切り替える。デプロイは次のように行う:
  *   STAGE=prod cdk deploy --all
  */
 export interface IacConfig {
-  /** Logical environment name. Used as a stack-name prefix. */
+  /** 論理環境名。スタック名のプレフィックスに使う。 */
   readonly stage: Stage;
-  /** Target AWS account (falls back to the CLI's default account). */
+  /** 対象の AWS アカウント（未指定なら CLI のデフォルトアカウントにフォールバック）。 */
   readonly account: string | undefined;
-  /** Target AWS region. Aurora DSQL must be available here. */
+  /** 対象の AWS リージョン。Aurora DSQL が利用可能である必要がある。 */
   readonly region: string;
-  /** Prefix applied to every stack name, e.g. `Icasu-Dev`. */
+  /** すべてのスタック名に付くプレフィックス（例: `Icasu-Dev`）。 */
   readonly stackPrefix: string;
 }
 
@@ -38,10 +38,10 @@ const configByStage: Record<Stage, IacConfig> = {
 };
 
 /**
- * Resolve the active config from the `STAGE` environment variable.
+ * 環境変数 `STAGE` から有効な設定を解決する。
  *
- * `STAGE` must be `dev`, `prod`, or unset; anything else throws. An unset
- * `STAGE` falls back to `dev`.
+ * `STAGE` は `dev`・`prod`・未設定のいずれかでなければならず、それ以外は例外を投げる。
+ * 未設定の場合は `dev` にフォールバックする。
  */
 export function resolveConfig(): IacConfig {
   const stage = resolveStage();

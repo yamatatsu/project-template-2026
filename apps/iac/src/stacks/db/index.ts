@@ -3,22 +3,22 @@ import { RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
 import type { Construct } from 'constructs';
 
 export interface DbStackProps extends StackProps {
-  /** Logical environment name (e.g. `dev`, `prod`). */
+  /** 論理環境名（例: `dev`、`prod`）。 */
   readonly stage: string;
 }
 
 /**
- * Database stack: a single-region Aurora DSQL cluster.
+ * データベーススタック: 単一リージョンの Aurora DSQL クラスタ。
  *
- * DSQL is a serverless, distributed PostgreSQL-compatible database. We use the
- * `@aws-cdk/aws-dsql-alpha` L2 `Cluster` construct, which surfaces the cluster
- * ARN/endpoint as attributes and provides `grantConnect*` helpers.
+ * DSQL はサーバーレスな分散 PostgreSQL 互換データベース。`@aws-cdk/aws-dsql-alpha` の
+ * L2 `Cluster` construct を使うと、クラスタの ARN / エンドポイントが属性として得られ、
+ * `grantConnect*` ヘルパーも提供される。
  *
- * Connections authenticate with short-lived IAM tokens (no static password) —
- * see `packages/db/src/client.ts` for how the runtime builds them.
+ * 接続は短命な IAM トークンで認証する（固定パスワードなし）— ランタイムでのトークン
+ * 生成方法は `packages/db/src/client.ts` を参照。
  */
 export class DbStack extends Stack {
-  /** The DSQL cluster resource. */
+  /** DSQL クラスタリソース。 */
   readonly cluster: Cluster;
 
   constructor(scope: Construct, id: string, props: DbStackProps) {
@@ -28,7 +28,7 @@ export class DbStack extends Stack {
 
     this.cluster = new Cluster(this, 'Cluster', {
       clusterName: `${props.stage}-app-db`,
-      // Protect production data from accidental `cdk destroy`.
+      // 誤った `cdk destroy` から本番データを守る。
       deletionProtection: isProd,
       removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
     });
