@@ -60,9 +60,13 @@ BFF が code をトークンに交換して DynamoDB にセッション行を作
 
 ## 深掘りリファレンス
 
-- **アーキテクチャ全体** —— 各フローの手順（login/callback/me/refresh/logout）、`/auth` vs `/api`
-  の分離と CloudFront/Vite の振り分け、ローカル↔本番の切り替え、draft との対応、DI 設計、
-  フロント連携。→ [references/architecture.md](references/architecture.md)
+- **各フローのシーケンス図** —— login / logout / refresh / API 保護の手順・順序・分岐を mermaid で
+  図解したリポジトリ内ドキュメント。**フロー（手順）はここが単一の真実源**（正典はコード＝テスト
+  だが、フローの記述はこの1箇所に集約し、architecture.md には重複させない）。フローを変えたら
+  まずここを直す。→ [`docs/specs/authentication.md`](../../../docs/specs/authentication.md)
+- **アーキテクチャ全体** —— `/auth` vs `/api` の分離と CloudFront/Vite の振り分け、セッションストア／
+  Cookie 仕様、ローカル↔本番の切り替え、DI 設計、フロント連携、draft との対応（＝**設計判断**が中心。
+  各フローの手順は上のドキュメントを見る）。→ [references/architecture.md](references/architecture.md)
 - **落とし穴・注意点** —— `__Host-` Cookie 削除時の Secure 必須、SameSite=Strict が成立する理由、
   DynamoDB Local の TTL、redirect_uri を strip しない理由、`invalid_grant` の扱い、Node strip-only
   TS の制約、open-redirect ガード 等（既に踏んで直したものを含む）。→

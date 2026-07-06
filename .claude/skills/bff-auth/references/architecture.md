@@ -4,7 +4,7 @@
 
 - [1. 登場人物とトラストモデル](#1-登場人物とトラストモデル)
 - [2. ルーティングの2系統: `/auth` と `/api`](#2-ルーティングの2系統-auth-と-api)
-- [3. 各フローの手順](#3-各フローの手順)
+- [3. 各フローのシーケンス図](#3-各フローのシーケンス図)
 - [4. セッションストア（DynamoDB 単一テーブル）](#4-セッションストアdynamodb-単一テーブル)
 - [5. Cookie の仕様](#5-cookie-の仕様)
 - [6. 設定注入（DI）と env](#6-設定注入diと-env)
@@ -53,48 +53,26 @@
 - フロント: `features/auth/lib/urls.ts` の `authUrls` は `/auth/*` を**素の URL**として持ち、
   `shared/api` の RPC クライアントは `/api` ベース。
 
-## 3. 各フローの手順
+## 3. 各フローのシーケンス図
 
-### ログイン（`GET /auth/login`）— `route.ts`
+login / callback / me（API 保護）/ refresh / logout の**手順とシーケンス図は
+[`docs/specs/authentication.md`](../../../../docs/specs/authentication.md) が単一の真実源**。
+フロー（順序・分岐）を変えたらまずそちらを直す。ここでは図に載せていない実装上の要点だけ残す:
 
-1. `codeVerifier`・`state`・`nonce` を生成（各 32 バイト乱数 base64url。`pkce.ts`）。
-2. `returnTo`（クエリ、既定 `/`）と共に `store.saveState(state, {...})` で **10 分 TTL** の一時 state を保存。
-3. `oidc.buildAuthorizeUrl` で `/authorize` へ 302。`response_type=code`・`code_challenge`（S256）・
-   `state`・`nonce`・`scope`・`redirect_uri` を付与。
-
-### コールバック（`GET /auth/callback`）— `route.ts`
-
-1. `code`・`state` 必須（無ければ 400 `invalid_request`）。
-2. `store.consumeState(state)` で state を**ワンタイム消費**（無ければ 400 `invalid_state`）。
-3. `oidc.exchangeCode(code, codeVerifier)` で token endpoint に交換（Basic 認証）。
-4. `verifier.verifyIdToken(idToken, nonce)` で id_token を JWKS・issuer・audience・**nonce** 検証（`jwks.ts`）。
-5. `sessionId` を新規生成し `store.saveSession` にトークン一式・`accessTokenExpiresAt`・`userSub`・`email` を保存。
-6. `cookies.setSessionCookie` で署名付き Cookie を発行。
-7. `returnTo` が `/` 始まりの同一オリジンパスのときだけそこへ、さもなくば `/` へ 302（**open-redirect ガード**）。
-
-### 現在ユーザー（`GET /api/me`）— `route.ts` + `middleware.ts`
-
-`requireSession` を通過したら `c.get('session')` の `userSub`・`email` を JSON で返すだけ。
-検証・リフレッシュはすべてミドルウェアが担う。
-
-### セッション検証 & 透過リフレッシュ（`requireSession`）— `middleware.ts`
-
-1. Cookie が無い → 401 `unauthenticated`（ストアに触れない）。
-2. `store.getSession` が空（失効/削除済み）→ 古い Cookie を消して 401。
-3. `accessTokenExpiresAt - 60s <= now`（**REFRESH_MARGIN_SECONDS=60**）なら `tryRefresh`:
-   - `refreshToken` が無ければ invalidate（セッション削除 + Cookie クリア）→ 401。
-   - `oidc.refreshTokens` 成功 → 新 access/id、**ローテーションされた refresh があれば差し替え**、
-     `accessTokenExpiresAt` 更新、`saveSession`。
-   - `TokenError.isInvalidGrant`（リフレッシュトークン失効/失格）→ invalidate → 401。
-   - **それ以外の一過性エラーは rethrow**（セッションは温存。ネットワーク瞬断で勝手にログアウト
-     させない）。
-4. 有効なら `c.set('session', {...})` して `next()`。
-
-### ログアウト（`GET /auth/logout`）— `route.ts`
-
-1. Cookie の sessionId があれば `store.deleteSession`。
-2. `cookies.clearSessionCookie`（`__Host-` でも throw しないよう Secure を渡す。gotchas 参照）。
-3. `oidc.buildLogoutUrl()`（`{redirect}` を `appBaseUrl` で置換）へ 302 = プロバイダ側セッションも終了。
+- **各エンドポイントと担当**: `/auth/login`・`/auth/callback`・`/auth/logout` は `route.ts`、
+  `/api/me` の検証と透過リフレッシュは `middleware.ts` の `requireSession`、`/api/me` 本体は
+  `route.ts` の `createMeRoute`（`c.get('session')` を JSON で返すだけ）。
+- **失効マージン**は `REFRESH_MARGIN_SECONDS = 60`（`middleware.ts`）。`accessTokenExpiresAt - 60s
+  <= now` で先回りリフレッシュ。
+- **リフレッシュの失敗分岐**: `refreshToken` 無し／`TokenError.isInvalidGrant` は invalidate
+  （セッション削除 + Cookie クリア）→ 401。**それ以外の一過性エラーは rethrow**（セッションは
+  温存。ネットワーク瞬断で勝手にログアウトさせない）。
+- **入力バリデーション**: `/auth/callback` は `code`・`state` 必須（無ければ 400 `invalid_request`）、
+  `consumeState` 空は 400 `invalid_state`。`returnTo` は `/` 始まりの同一オリジンパスのみ許可
+  （**open-redirect ガード**）。
+- **各種検証の中身**は他節に集約: PKCE/state/nonce 生成（§9 と `pkce.ts`）、id_token の
+  JWKS・issuer・audience・nonce 検証（`jwks.ts`）、セッションの TTL 明示チェック（§4）、
+  Cookie 署名（§5）。
 
 ## 4. セッションストア（DynamoDB 単一テーブル）
 
