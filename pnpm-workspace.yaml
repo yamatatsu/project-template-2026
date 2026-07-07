@@ -2,11 +2,6 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
-# esbuild は postinstall スクリプトでプラットフォーム別バイナリを配置する。CDK の
-# NodejsFunction が API Lambda をローカルでバンドルできるよう（Docker 不要）許可する。
-onlyBuiltDependencies:
-  - esbuild
-
 # vite（8 系）とそのバンドラ rolldown、wasm フォールバックバインディングのツールチェーン
 # （napi-rs / emnapi / tybys）は頻繁にリリースされ、プラットフォーム別バイナリも大量に publish
 # するため minimumReleaseAge 制約に常に引っかかる。いずれも vite 公式のビルドツールチェーンで
@@ -19,3 +14,9 @@ minimumReleaseAgeExclude:
   - '@napi-rs/*'
   - '@emnapi/*'
   - '@tybys/*'
+
+# esbuild は postinstall スクリプトでプラットフォーム別バイナリを配置する。CDK の
+# NodejsFunction が API Lambda をローカルでバンドルできるよう（Docker 不要）許可する。
+# pnpm 11 で onlyBuiltDependencies（配列）から allowBuilds（マップ）へ移行。
+allowBuilds:
+  esbuild: true
