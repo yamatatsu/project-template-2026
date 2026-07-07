@@ -1,0 +1,7 @@
+{
+  // このリポジトリで推奨する VSCode 拡張。クローンした人にインストールを促す。
+  "recommendations": [
+    // oxlint / oxfmt（Oxc）公式拡張。エディタ上の lint 診断と保存時整形を担う。
+    "oxc.oxc-vscode"
+  ]
+}
