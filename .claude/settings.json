@@ -1,5 +1,6 @@
 {
   "enabledPlugins": {
     "skill-creator@claude-plugins-official": true
-  }
+  },
+  "enabledMcpjsonServers": ["aws-knowledge-mcp-server", "aws-iac-mcp-server"]
 }
