@@ -2,7 +2,11 @@ import { type AuthConfig, createAuth } from '@icasu/backend-auth';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
-import { createTasksRoute } from './tasks/route.ts';
+import taskDelete from './routes/tasks/delete.ts';
+import taskGet from './routes/tasks/get.ts';
+import taskList from './routes/tasks/list.ts';
+import taskPost from './routes/tasks/post.ts';
+import taskPut from './routes/tasks/put.ts';
 
 /** アプリの構築に必要なものすべて。起動時に一度だけ組み立てる。 */
 export interface AppConfig {
@@ -27,12 +31,20 @@ export interface AppConfig {
 export function createApp(config: AppConfig) {
   const auth = createAuth(config.auth);
 
+  const applicationRoutes = new Hono()
+    .use('*', auth.requireSession)
+    .route('/', taskList)
+    .route('/', taskGet)
+    .route('/', taskPost)
+    .route('/', taskPut)
+    .route('/', taskDelete);
+
   return new Hono()
     .use('*', cors())
     .get('/hello-world', (c) => c.json({ message: 'hello world' }))
     .route('/auth', auth.navRoute)
     .route('/me', auth.meRoute)
-    .route('/tasks', createTasksRoute(auth.requireSession));
+    .route('/', applicationRoutes);
 }
 
 export type AppType = ReturnType<typeof createApp>;
