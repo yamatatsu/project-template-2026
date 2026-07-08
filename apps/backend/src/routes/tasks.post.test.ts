@@ -1,13 +1,13 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { JSON_HEADERS, migrateTestDb, testSession, withSession } from '../../__tests__/support.ts';
+import { JSON_HEADERS, migrateTestDb, testSession, withSession } from '../__tests__/support.ts';
 
 vi.mock('@icasu/db/client', () =>
-  import('../../__tests__/support.ts').then((m) => m.createTestDbModule()),
+  import('../__tests__/support.ts').then((m) => m.createTestDbModule()),
 );
 
-const app = withSession((await import('./post.ts')).default, testSession());
+const app = withSession((await import('./tasks.post.ts')).default, testSession());
 const { db } = await import('@icasu/db/client');
 const { tasks, users } = await import('@icasu/db/schema');
 

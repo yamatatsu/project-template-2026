@@ -4,8 +4,8 @@ import { tasks } from '@icasu/db/schema';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 
-import { auth } from '../../middleware/auth.ts';
-import { taskIdParamSchema } from './shared/schema.ts';
+import { auth } from '../middleware/auth.ts';
+import { taskIdParamSchema } from '../response-models/task.ts';
 
 export default new Hono().delete(
   '/tasks/:id',

@@ -3,8 +3,8 @@ import { db } from '@icasu/db/client';
 import { type NewTask, tasks } from '@icasu/db/schema';
 import { Hono } from 'hono';
 
-import { auth } from '../../middleware/auth.ts';
-import { createTaskSchema } from './shared/schema.ts';
+import { auth } from '../middleware/auth.ts';
+import { createTaskSchema } from '../response-models/task.ts';
 
 export default new Hono().post(
   '/tasks',
