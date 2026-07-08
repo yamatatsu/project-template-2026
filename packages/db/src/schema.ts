@@ -21,6 +21,11 @@ export const tasks = pgTable(
     status: text('status', { enum: taskStatusValues }).notNull().default('todo'),
     priority: text('priority', { enum: taskPriorityValues }).notNull().default('medium'),
     dueDate: timestamp('due_date'),
+    // 作成者。users.id を指すアプリ層の参照（DSQL のため FK は張らず整合性はアプリで担保）。
+    // 全 task は作成者を必ず持つため notNull。ただし DSQL は ALTER TABLE ADD COLUMN に NOT NULL を
+    // 付けられず SET NOT NULL も不可のため、この列の追加マイグレーション（0002）はテーブル再作成で
+    // 行っている（導入時点でローカル・クラウドとも tasks は空のため損失なし）。
+    createdBy: uuid('created_by').notNull(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at')
       .notNull()

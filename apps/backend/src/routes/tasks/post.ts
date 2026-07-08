@@ -18,6 +18,8 @@ export default new Hono().post(
       status: input.status,
       priority: input.priority,
       dueDate: input.dueDate == null ? input.dueDate : new Date(input.dueDate),
+      // 作成者は入力ではなく authZ が解決した User から採る（クライアントに詐称させない）。
+      createdBy: c.get('user').id,
     };
     const [created] = await db.insert(tasks).values(values).returning();
     return c.json(created, 201);

@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { JSON_HEADERS, migrateTestDb, testSession, withSession } from '../../__tests__/support.ts';
@@ -8,7 +9,7 @@ vi.mock('@icasu/db/client', () =>
 
 const app = withSession((await import('./post.ts')).default, testSession());
 const { db } = await import('@icasu/db/client');
-const { tasks } = await import('@icasu/db/schema');
+const { tasks, users } = await import('@icasu/db/schema');
 
 beforeAll(() => migrateTestDb(db));
 afterEach(() => db.delete(tasks));
@@ -35,6 +36,14 @@ describe('POST /tasks', () => {
     });
     expect(typeof json.id).toBe('string');
     expect(typeof json.createdAt).toBe('string');
+  });
+
+  it('records the authenticated user as createdBy', async () => {
+    const { json } = await createTask({ title: 'Owned task' });
+
+    // authZ が JIT プロビジョニングした users 行の id（session の userSub ではなく）。
+    const [user] = await db.select().from(users).where(eq(users.userSub, testSession().userSub));
+    expect(json.createdBy).toBe(user?.id);
   });
 
   it('honours explicitly provided status and priority', async () => {

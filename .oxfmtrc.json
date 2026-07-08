@@ -12,8 +12,8 @@
   "ignorePatterns": [
     "**/dist/**",
     "**/node_modules/**",
-    "**/shared/ui/**",
     "**/.claude/skills/**",
-    "**/routeTree.gen.ts"
+    "**/routeTree.gen.ts",
+    "**/src/migrations/**"
   ]
 }

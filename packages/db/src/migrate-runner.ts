@@ -48,8 +48,17 @@ export function formatMigrateError(error: MigrateError): string {
         '適用済みファイルは編集せず、新しいマイグレーションを追加してください'
       );
     case 'query_failed':
-      return `SQL の実行に失敗しました: ${error.statement}`;
+      // DB の生エラー（DSQL の制約違反・構文エラー等）を必ず添える。これが無いと statement しか
+      // 分からず、CloudFormation Trigger 経由の失敗を原因まで追えない（実際に切り分けを遅らせた）。
+      return `SQL の実行に失敗しました: ${error.statement}\n原因: ${describeCause(error.cause)}`;
   }
+}
+
+/** 未知の cause（多くは Error / DB ドライバのエラー）から表示用の文字列を取り出す。 */
+function describeCause(cause: unknown): string {
+  if (cause instanceof Error) return cause.message;
+  if (typeof cause === 'string') return cause;
+  return String(cause);
 }
 
 /** 適用済みマイグレーションの管理テーブル。SERIAL を避け tag（ファイル名）を PK にする。 */
