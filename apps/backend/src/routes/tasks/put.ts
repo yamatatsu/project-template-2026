@@ -4,10 +4,12 @@ import { type NewTask, tasks } from '@icasu/db/schema';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 
+import { auth } from '../../middleware/auth.ts';
 import { taskIdParamSchema, updateTaskSchema } from './shared/schema.ts';
 
 export default new Hono().put(
   '/tasks/:id',
+  auth({ for: 'user' }),
   zValidator('param', taskIdParamSchema),
   zValidator('json', updateTaskSchema),
   async (c) => {

@@ -1,0 +1,22 @@
+[
+  {
+    "SubjectId": "member-user",
+    "Username": "member",
+    "Password": "member",
+    "Claims": [
+      { "Type": "email", "Value": "member@example.com", "ValueType": "string" },
+      { "Type": "email_verified", "Value": "true", "ValueType": "boolean" },
+      { "Type": "name", "Value": "Member User", "ValueType": "string" }
+    ]
+  },
+  {
+    "SubjectId": "admin-user",
+    "Username": "admin",
+    "Password": "admin",
+    "Claims": [
+      { "Type": "email", "Value": "admin@example.com", "ValueType": "string" },
+      { "Type": "email_verified", "Value": "true", "ValueType": "boolean" },
+      { "Type": "name", "Value": "Admin User", "ValueType": "string" }
+    ]
+  }
+]

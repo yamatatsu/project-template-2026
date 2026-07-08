@@ -6,6 +6,7 @@ import { check, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 // zod スキーマ等からも再利用する。
 export const taskStatusValues = ['todo', 'in_progress', 'done'] as const;
 export const taskPriorityValues = ['low', 'medium', 'high'] as const;
+export const userRoleValues = ['member', 'admin'] as const;
 
 /** CHECK 制約用の `'a', 'b', 'c'` リテラル列を組み立てる（内部定数のみを渡すこと）。 */
 const literalList = (values: readonly string[]) =>
@@ -34,3 +35,23 @@ export const tasks = pgTable(
 
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
+
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // OIDC の sub。session.userSub と突き合わせるドメイン User の結合キー。1 ユーザー 1 行に
+    // するため unique。email は IdP（Cognito / session）を単一の真実の源とし、DB には持たない。
+    userSub: text('user_sub').notNull().unique(),
+    role: text('role', { enum: userRoleValues }).notNull().default('member'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [check('users_role_check', sql`${table.role} in (${literalList(userRoleValues)})`)],
+);
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;

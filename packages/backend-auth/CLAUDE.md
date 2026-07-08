@@ -43,7 +43,7 @@ src/
      コンパイルエラー。
   2. **起動時の一括検証** — ホストは `loadAuthConfigFromEnv()` を**起動時**（`apps/backend`
      の `index.ts` / `lambda.ts`）に呼ぶ。不足 env は**全件まとめて**報告し、初回リクエストでは
-     なくブート時に落とす。同じコードが本番（実 Cognito）とローカル（mock-oauth2-server +
+     なくブート時に落とす。同じコードが本番（実 Cognito）とローカル（oidc-server-mock +
      DynamoDB Local）で動くのは、差分をすべて `AuthConfig` に寄せているため。必要な変数は
      `apps/backend/.env.example` を参照。
 - **ルート定義はメソッドチェーンで書く**。`createAuthRoute` の戻り値型が `AppType` 経由で

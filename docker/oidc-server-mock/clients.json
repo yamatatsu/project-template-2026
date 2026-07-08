@@ -1,0 +1,19 @@
+[
+  {
+    "ClientId": "local-client",
+    "ClientSecrets": ["local-secret"],
+    "Description": "ローカル BFF（apps/backend）。本番の Cognito app client 相当。",
+    "AllowedGrantTypes": ["authorization_code"],
+    "RequirePkce": true,
+    "RequireClientSecret": true,
+    "AllowedScopes": ["openid", "profile", "email"],
+    "RedirectUris": [
+      "http://localhost:5001/api/auth/callback",
+      "http://localhost:5001/auth/callback"
+    ],
+    "PostLogoutRedirectUris": ["http://localhost:5001"],
+    "AllowAccessTokensViaBrowser": false,
+    "AlwaysIncludeUserClaimsInIdToken": true,
+    "RequireConsent": false
+  }
+]

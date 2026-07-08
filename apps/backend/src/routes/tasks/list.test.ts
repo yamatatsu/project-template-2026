@@ -1,13 +1,13 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { migrateTestDb } from '../../__tests__/support.ts';
+import { migrateTestDb, testSession, withSession } from '../../__tests__/support.ts';
 import { seedTask } from './__tests__/seed.ts';
 
 vi.mock('@icasu/db/client', () =>
   import('../../__tests__/support.ts').then((m) => m.createTestDbModule()),
 );
 
-const app = (await import('./list.ts')).default;
+const app = withSession((await import('./list.ts')).default, testSession());
 const { db } = await import('@icasu/db/client');
 const { tasks } = await import('@icasu/db/schema');
 

@@ -81,11 +81,15 @@ export function createAuthRoute(deps: AuthRouteDeps) {
     })
     .get('/logout', async (c) => {
       const sessionId = await cookies.readSessionCookie(c);
+      // RP-initiated logout の id_token_hint 用に、セッション削除前に id_token を控える。
+      // プロバイダ（Duende 等）はこれで post_logout_redirect_uri を検証し、アプリへ戻す。
+      let idToken: string | undefined;
       if (sessionId) {
+        idToken = (await store.getSession(sessionId))?.idToken;
         await store.deleteSession(sessionId);
       }
       cookies.clearSessionCookie(c);
-      return c.redirect(oidc.buildLogoutUrl());
+      return c.redirect(oidc.buildLogoutUrl(idToken));
     });
 }
 

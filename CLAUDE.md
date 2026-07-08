@@ -38,7 +38,7 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 
 ## ローカル開発
 
-ローカルは docker-compose のエミュレータ（Postgres + DynamoDB Local + mock-oauth2-server）を
+ローカルは docker-compose のエミュレータ（Postgres + DynamoDB Local + oidc-server-mock）を
 使うため AWS 認証情報は不要。
 
 1. `pnpm local:up` — Postgres + DynamoDB Local + OIDC mock を起動し、セッションテーブルを作成。
@@ -47,8 +47,20 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 3. `apps/backend/.env` を用意（`apps/backend/.env.example` をコピー。OIDC/Cookie/DynamoDB の
    ローカル既定値入り）。
 4. `pnpm dev` — フロント（:5001）とバック（:3001 = BFF）を並列起動。
-5. http://localhost:5001 へアクセス → 未認証なら mock のログイン画面へ。任意のユーザー名で
-   ログインすると SPA に戻る。
+5. http://localhost:5001 へアクセス → 未認証なら OIDC フローが走り、oidc-server-mock の
+   ログイン画面へ。事前定義ユーザーでログインすると SPA に戻る（`member` / `member`、または
+   `admin` / `admin`。どちらも email 付き）。
+
+ローカル認証の補足:
+
+- OIDC プロバイダは oidc-server-mock（Duende IdentityServer ベース）。ユーザーは email 付きで
+  `docker/oidc-server-mock/users.json` に事前定義する（`member-user` / `admin-user`）。BFF クライアントの
+  登録は `clients.json`。ユーザーやクレームを増やすなら users.json を編集して `pnpm local:up`
+  （または oidc-server-mock コンテナ再起動）。
+- **admin を試す**: `admin` / `admin` でログインすると `sub=admin-user`。ただし role は DB 側の責務で、
+  初回アクセス時に JIT で `role='member'` の行が作られる。admin として認可を通すには
+  `update users set role='admin' where user_sub='admin-user';` で昇格する（認可の設計は
+  [`apps/backend/CLAUDE.md`](apps/backend/CLAUDE.md)「認証・認可」節）。
 
 認証（OAuth BFF パターン）の仕組み・設計・本番 Cognito との切り替えは
 [`packages/backend-auth/CLAUDE.md`](packages/backend-auth/CLAUDE.md) を参照。
@@ -105,6 +117,6 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 ## docker-compose のコンテナ設定ファイル
 
 `docker-compose.yml`（ルート）から volume マウントするコンテナの設定ファイルは、ルート直下の
-`docker/<service>/` に置く（例: mock-oauth2-server の設定は `docker/mock-oauth2-server/config.json`）。
-アプリのソース（`apps/*`）には置かない。1 サービスが複数ファイルを持っても破綻しないよう、
-サービス名でディレクトリを分ける。
+`docker/<service>/` に置く（例: oidc-server-mock の設定は `docker/oidc-server-mock/clients.json` /
+`users.json`）。アプリのソース（`apps/*`）には置かない。1 サービスが複数ファイルを持っても破綻
+しないよう、サービス名でディレクトリを分ける。

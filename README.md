@@ -41,7 +41,7 @@ architecture-beta
     junction jct1
     service bff(logos:hono)[Hono BFF 3001]
     service vite(logos:vite)[Vite Dev Server 5001]
-    service oidc(server)[mock oauth2 server 8080]
+    service oidc(server)[oidc server mock 8080]
     junction jct2
     service browser(internet)[Browser]
 
@@ -54,14 +54,14 @@ architecture-beta
     jct1:R --> L:pg
 ```
 
-| リソース                     | 説明                                                                                                 |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Browser                      | ユーザーのブラウザ。SPA を表示し、OAuth のログイン/ログアウトは mock-oauth2 へ直接遷移する。         |
-| Vite Dev Server (`:5001`)    | フロントの開発サーバ。SPA を配信し、`/api/*`・`/auth/*` を Hono BFF へプロキシする。                 |
-| Hono BFF (`:3001`)           | Hono バックエンド。JSON API（`/me`・`/tasks`）と OAuth 遷移（`/auth`）を処理し、セッションを検証。   |
-| Postgres (`:5432`)           | アプリデータ（tasks など）の DB（drizzle 経由）。docker-compose のエミュレータ。本番は Aurora DSQL。 |
-| DynamoDB Local (`:8000`)     | 不透明セッション + 一時 state のストア。docker-compose のエミュレータ。本番は DynamoDB。             |
-| mock-oauth2-server (`:8080`) | ローカル用の OIDC プロバイダ。docker-compose のエミュレータ。本番は Cognito。                        |
+| リソース                   | 説明                                                                                                 |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Browser                    | ユーザーのブラウザ。SPA を表示し、OAuth のログイン/ログアウトは oidc-server-mock へ直接遷移する。    |
+| Vite Dev Server (`:5001`)  | フロントの開発サーバ。SPA を配信し、`/api/*`・`/auth/*` を Hono BFF へプロキシする。                 |
+| Hono BFF (`:3001`)         | Hono バックエンド。JSON API（`/me`・`/tasks`）と OAuth 遷移（`/auth`）を処理し、セッションを検証。   |
+| Postgres (`:5432`)         | アプリデータ（tasks など）の DB（drizzle 経由）。docker-compose のエミュレータ。本番は Aurora DSQL。 |
+| DynamoDB Local (`:8000`)   | 不透明セッション + 一時 state のストア。docker-compose のエミュレータ。本番は DynamoDB。             |
+| oidc-server-mock (`:8080`) | ローカル用の OIDC プロバイダ。docker-compose のエミュレータ。本番は Cognito。                        |
 
 ## クラウド構成（AWS）
 
@@ -94,16 +94,16 @@ architecture-beta
     jct1:R --> L:dsql
 ```
 
-| リソース               | 説明                                                                                                                   |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Browser                | ユーザーのブラウザ。SPA を表示し、OAuth のログイン/ログアウトは Cognito Hosted UI へ直接遷移する。                     |
-| CloudFront             | 全リクエスト（SPA・`/api`・`/auth`）の単一エントリ。S3 と API Gateway をオリジンに束ね、HTTPS を強制する。             |
-| S3                     | SPA の静的アセットを保持するバケット（private + OAC）。CloudFront Function で SPA フォールバック。                     |
-| API Gateway (HTTP API) | `/api/*`（先頭 `/api` 除去）・`/auth/*`（除去なし）を Lambda へ転送する。authorizer は付けない。                       |
-| Lambda (Hono BFF)      | Hono バックエンド。認証は Lambda 内のセッションミドルウェアが担い、confidential client として Cognito と通信。         |
-| Aurora DSQL            | アプリデータ（tasks など）のサーバーレス DB（IAM トークン認証、drizzle 経由）。ローカルの Postgres 相当。              |
-| DynamoDB               | 不透明セッション + 一時 state（`sess#`／`state#`）のストア。TTL で自動失効。                                           |
-| Cognito (Hosted UI)    | OIDC プロバイダ。Hosted UI でログインし、authorization code + PKCE でトークンを発行する。ローカルの mock-oauth2 相当。 |
+| リソース               | 説明                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Browser                | ユーザーのブラウザ。SPA を表示し、OAuth のログイン/ログアウトは Cognito Hosted UI へ直接遷移する。                          |
+| CloudFront             | 全リクエスト（SPA・`/api`・`/auth`）の単一エントリ。S3 と API Gateway をオリジンに束ね、HTTPS を強制する。                  |
+| S3                     | SPA の静的アセットを保持するバケット（private + OAC）。CloudFront Function で SPA フォールバック。                          |
+| API Gateway (HTTP API) | `/api/*`（先頭 `/api` 除去）・`/auth/*`（除去なし）を Lambda へ転送する。authorizer は付けない。                            |
+| Lambda (Hono BFF)      | Hono バックエンド。認証は Lambda 内のセッションミドルウェアが担い、confidential client として Cognito と通信。              |
+| Aurora DSQL            | アプリデータ（tasks など）のサーバーレス DB（IAM トークン認証、drizzle 経由）。ローカルの Postgres 相当。                   |
+| DynamoDB               | 不透明セッション + 一時 state（`sess#`／`state#`）のストア。TTL で自動失効。                                                |
+| Cognito (Hosted UI)    | OIDC プロバイダ。Hosted UI でログインし、authorization code + PKCE でトークンを発行する。ローカルの oidc-server-mock 相当。 |
 
 `STAGE`（`dev` / `prod`）以外の設定は `apps/iac/src/config.ts` に定数で持つ。スタック構成・
 デプロイ手順・DSQL のアプリ側 follow-up は [`apps/iac/README.md`](apps/iac/README.md) を参照。

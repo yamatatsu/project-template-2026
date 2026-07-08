@@ -2,7 +2,7 @@
  * 認証の設定。
  *
  * BFF は汎用の OIDC authorization-code + PKCE フローに対して実装しているため、同じコードが
- * Cognito（本番）と mock-oauth2-server（ローカル）の両方で動く — 違うのは `AuthConfig` の
+ * Cognito（本番）と oidc-server-mock（ローカル）の両方で動く — 違うのは `AuthConfig` の
  * 値だけ。
  *
  * このパッケージは自分では一切 `process.env` を読まない: ホストが `AuthConfig` を組み立て

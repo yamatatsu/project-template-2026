@@ -27,7 +27,8 @@ const ENV: Record<string, string> = {
   OIDC_CLIENT_SECRET: 'local-secret',
   OIDC_SCOPES: 'openid email profile',
   AUTH_REDIRECT_URI: 'http://localhost:5001/auth/callback',
-  AUTH_LOGOUT_URL: 'http://localhost:8080/default/endsession?post_logout_redirect_uri={redirect}',
+  AUTH_LOGOUT_URL:
+    'http://localhost:8080/default/endsession?id_token_hint={id_token_hint}&post_logout_redirect_uri={redirect}',
   APP_BASE_URL: 'http://localhost:5001',
   COOKIE_SECRET: 'x'.repeat(32),
   SESSION_TABLE_NAME: 'sessions',
@@ -240,7 +241,11 @@ describe('GET /logout', () => {
     const res = await authRoute.request('/logout', { headers: { cookie } });
 
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toContain('/default/endsession');
+    const location = res.headers.get('location') ?? '';
+    expect(location).toContain('/default/endsession');
+    // RP-initiated logout: セッションの id_token を id_token_hint に載せる（プロバイダが
+    // post_logout_redirect_uri を検証してアプリへ戻すのに要る）。
+    expect(location).toContain('id_token_hint=id-token');
     // ログアウト後は同じ Cookie ではもう認証されない。
     const after = await meRoute.request('/', { headers: { cookie } });
     expect(after.status).toBe(401);

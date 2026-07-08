@@ -40,17 +40,38 @@ services:
       - ./docker/dynamodb/init.sh:/init/init.sh:ro
     restart: 'no'
 
-  # mock-oauth2-server — ローカル用の OIDC プロバイダ（本番は Cognito Hosted UI）。
+  # oidc-server-mock — ローカル用の OIDC プロバイダ（本番は Cognito Hosted UI）。Duende IdentityServer ベース。
   # BFF は OIDC 標準フローで実装しているため、環境変数で URL を差し替えるだけで同一コードで動く。
-  # interactiveLogin=true でログイン画面が出て、入力したユーザー名が sub/email に反映される。
-  mock-oauth2-server:
-    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+  # member/admin を email 付きで事前定義し、ログイン画面でユーザーを選べる
+  # （設定は docker/oidc-server-mock/{clients,users}.json）。エンドポイントは Duende 形式
+  # （/connect/authorize・/connect/token・/.well-known/openid-configuration/jwks）。
+  oidc-server-mock:
+    image: ghcr.io/soluto/oidc-server-mock:0.8.6
     ports:
-      - '8080:8080'
+      - '8080:80'
     environment:
-      JSON_CONFIG_PATH: /config/mock-oauth2-config.json
+      ASPNETCORE_ENVIRONMENT: Development
+      # AlwaysIncludeUserClaimsInIdToken=true（clients.json）で email を id_token に載せる。
+      # Cookie は SameSite=Lax にする。既定の SameSite=None は Secure 必須で、http の localhost では
+      # ブラウザに破棄され、ログイン後の /connect/authorize/callback で認証が失われてログインループになる。
+      SERVER_OPTIONS_INLINE: |
+        {
+          "AccessTokenJwtType": "JWT",
+          "Discovery": { "ShowKeySet": true },
+          "Authentication": {
+            "CookieSameSiteMode": "Lax",
+            "CheckSessionCookieSameSiteMode": "Lax"
+          }
+        }
+      LOGIN_OPTIONS_INLINE: |
+        { "AllowRememberLogin": false }
+      LOGOUT_OPTIONS_INLINE: |
+        { "AutomaticRedirectAfterSignOut": true }
+      CLIENTS_CONFIGURATION_PATH: /config/clients.json
+      USERS_CONFIGURATION_PATH: /config/users.json
     volumes:
-      - ./docker/mock-oauth2-server/config.json:/config/mock-oauth2-config.json:ro
+      - ./docker/oidc-server-mock/clients.json:/config/clients.json:ro
+      - ./docker/oidc-server-mock/users.json:/config/users.json:ro
 
 volumes:
   db_data:

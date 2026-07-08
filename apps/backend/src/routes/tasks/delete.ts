@@ -4,10 +4,12 @@ import { tasks } from '@icasu/db/schema';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 
+import { auth } from '../../middleware/auth.ts';
 import { taskIdParamSchema } from './shared/schema.ts';
 
 export default new Hono().delete(
   '/tasks/:id',
+  auth({ for: 'user' }),
   zValidator('param', taskIdParamSchema),
   async (c) => {
     const { id } = c.req.valid('param');

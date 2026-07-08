@@ -35,8 +35,13 @@ export interface OidcClient {
   exchangeCode(code: string, codeVerifier: string): Promise<TokenSet>;
   /** リフレッシュトークンを新しいトークン一式に交換する。 */
   refreshTokens(refreshToken: string): Promise<TokenSet>;
-  /** プロバイダのログアウト URL を組み立てる（`{redirect}` はアプリのベース URL に置換）。 */
-  buildLogoutUrl(): string;
+  /**
+   * プロバイダのログアウト URL を組み立てる。テンプレート（`AUTH_LOGOUT_URL`）中の
+   * `{redirect}` はアプリのベース URL に、`{id_token_hint}` は現在のセッションの id_token に置換する。
+   * id_token_hint は OIDC RP-initiated logout でプロバイダが `post_logout_redirect_uri` を検証する
+   * のに要る（Duende 等）。テンプレートに該当プレースホルダが無いプロバイダ（Cognito）では未使用。
+   */
+  buildLogoutUrl(idTokenHint?: string): string;
 }
 
 interface TokenResponse {
@@ -106,8 +111,10 @@ export function createOidcClient(cfg: AuthConfig): OidcClient {
         }),
       );
     },
-    buildLogoutUrl() {
-      return cfg.logoutUrl.replace('{redirect}', encodeURIComponent(cfg.appBaseUrl));
+    buildLogoutUrl(idTokenHint?: string) {
+      return cfg.logoutUrl
+        .replace('{redirect}', encodeURIComponent(cfg.appBaseUrl))
+        .replace('{id_token_hint}', idTokenHint ? encodeURIComponent(idTokenHint) : '');
     },
   };
 }

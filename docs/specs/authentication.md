@@ -12,7 +12,7 @@ OAuth 2.0 authorization code + PKCE を **BFF（Backend-For-Frontend）パター
 出典は [OAuth 2.0 for Browser-Based Applications](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-browser-based-apps)
 の §6（BFF）、Cookie 属性は §6.1.3.2。
 
-- **OIDC プロバイダ**: 本番は Amazon Cognito、ローカルは mock-oauth2-server。**同一コードが両方で動く**
+- **OIDC プロバイダ**: 本番は Amazon Cognito、ローカルは oidc-server-mock。**同一コードが両方で動く**
   （差分はすべて `AuthConfig` に注入されるため）。
 - **クライアント**: Hono の BFF が **confidential client**（client secret を保持）としてトークン交換する。
 - **セッション**: DynamoDB の 1 テーブルに保存。ブラウザには署名付き session id を載せた Cookie だけを返す。
@@ -28,12 +28,12 @@ OAuth 2.0 authorization code + PKCE を **BFF（Backend-For-Frontend）パター
 
 ## 登場人物
 
-| 登場人物           | 実体                                       | 役割                                                                                                                                         |
-| ------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ブラウザ (SPA)** | `apps/frontend`（React）                   | `AuthGuard` が `/api/me` でセッションを確認し、未認証なら BFF のログインへ全画面遷移する。トークンには一切触れない。                         |
-| **BFF (Hono)**     | `apps/backend` + `@icasu/backend-auth`     | OAuth 遷移（`/auth/*`）と保護 JSON API（`/api/*`）を提供。confidential client としてトークン交換・リフレッシュを行い、セッションを管理する。 |
-| **Cognito / OIDC** | 本番 Cognito / ローカル mock-oauth2-server | hosted UI・`/authorize`・`/token`・`/logout` を提供する OIDC プロバイダ。                                                                    |
-| **DynamoDB**       | `apps/iac` の sessions テーブル            | 1 テーブルを `pk` で名前空間分け。`state#<state>`（ログイン途中の一時データ）と `sess#<sessionId>`（トークンを含むセッション行）を持つ。     |
+| 登場人物           | 実体                                     | 役割                                                                                                                                         |
+| ------------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ブラウザ (SPA)** | `apps/frontend`（React）                 | `AuthGuard` が `/api/me` でセッションを確認し、未認証なら BFF のログインへ全画面遷移する。トークンには一切触れない。                         |
+| **BFF (Hono)**     | `apps/backend` + `@icasu/backend-auth`   | OAuth 遷移（`/auth/*`）と保護 JSON API（`/api/*`）を提供。confidential client としてトークン交換・リフレッシュを行い、セッションを管理する。 |
+| **Cognito / OIDC** | 本番 Cognito / ローカル oidc-server-mock | hosted UI・`/authorize`・`/token`・`/logout` を提供する OIDC プロバイダ。                                                                    |
+| **DynamoDB**       | `apps/iac` の sessions テーブル          | 1 テーブルを `pk` で名前空間分け。`state#<state>`（ログイン途中の一時データ）と `sess#<sessionId>`（トークンを含むセッション行）を持つ。     |
 
 ### エンドポイントの 2 系統
 
@@ -250,12 +250,12 @@ sequenceDiagram
 ホスト（`apps/backend`）が起動時に `loadAuthConfigFromEnv()` を一度呼び、不足 env を全件まとめて
 報告して fail fast する。必要な環境変数は `apps/backend/.env.example` を参照。
 
-| 観点                       | ローカル                             | 本番                                |
-| -------------------------- | ------------------------------------ | ----------------------------------- |
-| OIDC プロバイダ            | mock-oauth2-server（docker-compose） | Amazon Cognito（hosted UI）         |
-| セッションストア           | DynamoDB Local                       | DynamoDB                            |
-| Cookie                     | `Secure` なし・プレフィックス無し    | `Secure` + `__Host-` プレフィックス |
-| `/auth`・`/api` の振り分け | Vite proxy                           | CloudFront                          |
+| 観点                       | ローカル                           | 本番                                |
+| -------------------------- | ---------------------------------- | ----------------------------------- |
+| OIDC プロバイダ            | oidc-server-mock（docker-compose） | Amazon Cognito（hosted UI）         |
+| セッションストア           | DynamoDB Local                     | DynamoDB                            |
+| Cookie                     | `Secure` なし・プレフィックス無し  | `Secure` + `__Host-` プレフィックス |
+| `/auth`・`/api` の振り分け | Vite proxy                         | CloudFront                          |
 
 ## 関連ファイル
 

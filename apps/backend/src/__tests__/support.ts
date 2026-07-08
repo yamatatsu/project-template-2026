@@ -9,6 +9,9 @@
  * 参照すると初期化前アクセスになる。動的 import ならその制約を回避できる。
  */
 
+import type { AuthEnv, SessionContext } from '@icasu/backend-auth';
+import { type Env, Hono, type Schema } from 'hono';
+
 /** `@icasu/db/client` の差し替えモジュール。PGlite 上の drizzle クライアントを返す。 */
 export async function createTestDbModule() {
   const { PGlite } = await import('@electric-sql/pglite');
@@ -25,3 +28,25 @@ export async function migrateTestDb(db: unknown) {
 }
 
 export const JSON_HEADERS = { 'content-type': 'application/json' };
+
+/** テスト用の既定 session。`userSub` を上書きして role 別ケースを作る。 */
+export function testSession(overrides: Partial<SessionContext> = {}): SessionContext {
+  return { sessionId: 'test-session', userSub: 'test-user', email: undefined, ...overrides };
+}
+
+/**
+ * ルート単体テスト用ハーネス。本番は合成点の `requireSession` が session を Context に載せるが、
+ * ルート単体（`app.request`）にはそれが無く、authZ ミドルウェアが `c.get('session')` で落ちる。
+ * リクエスト前に session を注入する薄い親 app で対象ルートを包み、認可まで込みで検証できるようにする。
+ */
+export function withSession<E extends Env, S extends Schema, P extends string>(
+  app: Hono<E, S, P>,
+  session: SessionContext,
+) {
+  return new Hono<AuthEnv>()
+    .use('*', (c, next) => {
+      c.set('session', session);
+      return next();
+    })
+    .route('/', app);
+}
