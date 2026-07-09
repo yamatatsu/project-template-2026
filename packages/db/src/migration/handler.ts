@@ -1,4 +1,4 @@
-import { formatMigrateError, runMigrations } from './migrate-runner.ts';
+import { formatMigrateError, runMigrations } from './runner.ts';
 
 /**
  * CDK の Trigger（apps/iac の `Migration` construct）がデプロイ中に呼ぶ Lambda ハンドラ。

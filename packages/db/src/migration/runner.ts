@@ -7,8 +7,8 @@ import { type Result, err, ok } from '@icasu/simple-result';
 import { type SQL, sql } from 'drizzle-orm';
 import type { QueryResult } from 'pg';
 
-import { db } from './client.ts';
-import { migrationsFolder } from './migrations.ts';
+import { db } from '../client.ts';
+import { migrationsFolder } from './folder.ts';
 
 /**
  * DSQL 対応の自前マイグレーションランナー。

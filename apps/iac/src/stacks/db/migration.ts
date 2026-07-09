@@ -9,8 +9,8 @@ import { Trigger } from 'aws-cdk-lib/triggers';
 import { Construct } from 'constructs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
-const MIGRATE_ENTRY = join(here, '../../../../../packages/db/src/migrate-handler.ts');
-const MIGRATIONS_DIR = 'packages/db/src/migrations';
+const MIGRATE_ENTRY = join(here, '../../../../../packages/db/src/migration/handler.ts');
+const MIGRATIONS_DIR = 'packages/db/src/migration/ddl';
 const DEPS_LOCK_FILE = join(here, '../../../../../pnpm-lock.yaml');
 
 export interface MigrationProps {
@@ -47,7 +47,7 @@ export class Migration extends Construct {
         NODE_OPTIONS: '--enable-source-maps',
       },
       bundling: {
-        // migrations.ts が import.meta.url で SQL フォルダを解決するため ESM で出力する。
+        // folder.ts が import.meta.url で SQL フォルダを解決するため ESM で出力する。
         format: OutputFormat.ESM,
         target: 'node22',
         sourceMap: true,
@@ -60,7 +60,7 @@ export class Migration extends Construct {
           beforeBundling: () => [],
           beforeInstall: () => [],
           // SQL ファイルは import されず esbuild が同梱しないため、バンドル出力へコピーする
-          // （実行時は bundle された migrations.ts が自身の隣の ./migrations を見る）。
+          // （実行時は bundle された folder.ts が自身の隣の ./ddl を見る）。
           afterBundling: (inputDir: string, outputDir: string) => [
             `cp -R "${join(inputDir, MIGRATIONS_DIR)}" "${outputDir}"`,
           ],

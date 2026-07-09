@@ -1,4 +1,4 @@
-import { formatMigrateError, runMigrations } from './migrate-runner.ts';
+import { formatMigrateError, runMigrations } from './runner.ts';
 
 const res = await runMigrations();
 

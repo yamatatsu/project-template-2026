@@ -7,12 +7,12 @@
     ".": "./src/schema.ts",
     "./schema": "./src/schema.ts",
     "./client": "./src/client.ts",
-    "./migrations": "./src/migrations.ts"
+    "./migrations": "./src/migration/folder.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node --env-file-if-exists=.env src/migrate.ts",
+    "db:migrate": "node --env-file-if-exists=.env src/migration/cli.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
