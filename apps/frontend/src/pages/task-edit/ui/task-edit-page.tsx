@@ -6,7 +6,7 @@ import { TaskForm } from '@/features/task-form';
 import { ButtonLink } from '@/shared/ui/button-link';
 
 export function TaskEditPage() {
-  const { taskId } = useParams({ from: '/tasks/$taskId/edit' });
+  const { taskId } = useParams({ from: '/_admin/tasks/$taskId/edit' });
   const { data: task, isPending, isError } = useQuery(taskDetailQuery(taskId));
 
   if (isPending) {

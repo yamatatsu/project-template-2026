@@ -8,7 +8,7 @@ import { ButtonLink } from '@/shared/ui/button-link';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/shared/ui/card';
 
 export function TaskDetailPage() {
-  const { taskId } = useParams({ from: '/tasks/$taskId/' });
+  const { taskId } = useParams({ from: '/_admin/tasks/$taskId/' });
   const navigate = useNavigate();
   const { data: task, isPending, isError } = useQuery(taskDetailQuery(taskId));
 
@@ -65,11 +65,11 @@ export function TaskDetailPage() {
           </div>
           <div>
             <span className="text-muted-foreground">作成日: </span>
-            {formatDateTime(task.createdAt)}
+            {formatDateTime(task.meta.createdAt)}
           </div>
           <div>
             <span className="text-muted-foreground">更新日: </span>
-            {formatDateTime(task.updatedAt)}
+            {formatDateTime(task.meta.updatedAt)}
           </div>
         </CardContent>
         <CardFooter className="gap-2">

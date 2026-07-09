@@ -9,8 +9,12 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     status: 'todo',
     priority: 'medium',
     dueDate: '2026-07-01T00:00:00.000Z',
-    createdAt: '2026-06-01T00:00:00.000Z',
-    updatedAt: '2026-06-02T00:00:00.000Z',
+    createdBy: 'test-user',
+    meta: {
+      version: 1,
+      createdAt: '2026-06-01T00:00:00.000Z',
+      updatedAt: '2026-06-02T00:00:00.000Z',
+    },
     ...overrides,
   } as Task;
 }

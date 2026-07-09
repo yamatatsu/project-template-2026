@@ -40,7 +40,8 @@ const columns = [
     header: '期限',
     cell: (info) => formatDateTime(info.getValue()),
   }),
-  columnHelper.accessor('createdAt', {
+  columnHelper.accessor((row) => row.meta.createdAt, {
+    id: 'createdAt',
     header: '作成日',
     cell: (info) => formatDateTime(info.getValue()),
   }),
