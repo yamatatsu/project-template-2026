@@ -1,19 +1,15 @@
 import { eq } from 'drizzle-orm';
+import type { InferRequestType } from 'hono/client';
+import { testClient } from 'hono/testing';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  JSON_HEADERS,
-  migrateTestDb,
-  seedSessionUser,
-  testSession,
-  withSession,
-} from '../__tests__/support.ts';
+import { migrateTestDb, seedSessionUser, testSession, withSession } from '../__tests__/support.ts';
 
 vi.mock('@icasu/db/client', () =>
   import('../__tests__/support.ts').then((m) => m.createTestDbModule()),
 );
 
-const app = withSession((await import('./tasks.post.ts')).default, testSession());
+const client = testClient(withSession((await import('./tasks.post.ts')).default, testSession()));
 const { db } = await import('@icasu/db/client');
 const { tasks, users } = await import('@icasu/db/schema');
 
@@ -25,9 +21,13 @@ afterEach(async () => {
   await db.delete(users);
 });
 
+// リクエストボディの型は RPC の request 型から取り出す（transform 前の入力型）。テストのボディが
+// サーバ契約とずれたら型で落ちる。
+type TaskInput = InferRequestType<(typeof client.tasks)['$post']>['json'];
+
 // リクエストは全フィールド必須（DB デフォルトに委ねない方針）。テストは全フィールドを持つ
 // 有効ボディを基準に、検証したい項目だけ上書きする。
-const validBody = (overrides: Record<string, unknown> = {}) => ({
+const validBody = (overrides: Partial<TaskInput> = {}): TaskInput => ({
   title: 'Write tests',
   description: null,
   status: 'todo',
@@ -37,12 +37,8 @@ const validBody = (overrides: Record<string, unknown> = {}) => ({
 });
 
 /** ヘルパー: task を POST し、パース済みの JSON ボディを返す。 */
-async function createTask(body: Record<string, unknown>) {
-  const res = await app.request('/tasks', {
-    method: 'POST',
-    headers: JSON_HEADERS,
-    body: JSON.stringify(body),
-  });
+async function createTask(body: TaskInput) {
+  const res = await client.tasks.$post({ json: body });
   return { res, json: (await res.json()) as Record<string, unknown> };
 }
 
@@ -68,22 +64,15 @@ describe('POST /tasks', () => {
   });
 
   it('rejects a body missing required fields with 400', async () => {
-    // status / priority を必須にしたので、title だけでは通らない（フロントに値を明示させる）。
-    const res = await app.request('/tasks', {
-      method: 'POST',
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ title: 'no status/priority' }),
-    });
+    // status / priority を必須にしたので、title だけでは通らない（フロントに値を明示させる）。欠落は
+    // 型契約にも反するので、zValidator の 400 を確かめるため型を外して送る。
+    const res = await client.tasks.$post({ json: { title: 'no status/priority' } as never });
 
     expect(res.status).toBe(400);
   });
 
   it('rejects an empty title with 400', async () => {
-    const res = await app.request('/tasks', {
-      method: 'POST',
-      headers: JSON_HEADERS,
-      body: JSON.stringify(validBody({ title: '   ' })),
-    });
+    const res = await client.tasks.$post({ json: validBody({ title: '   ' }) });
 
     expect(res.status).toBe(400);
   });

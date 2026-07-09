@@ -1,3 +1,4 @@
+import { testClient } from 'hono/testing';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { migrateTestDb, testSession, withSession } from '../__tests__/support.ts';
@@ -7,7 +8,7 @@ vi.mock('@icasu/db/client', () =>
   import('../__tests__/support.ts').then((m) => m.createTestDbModule()),
 );
 
-const app = withSession((await import('./tasks.list.ts')).default, testSession());
+const client = testClient(withSession((await import('./tasks.list.ts')).default, testSession()));
 const { db } = await import('@icasu/db/client');
 const { tasks } = await import('@icasu/db/schema');
 
@@ -26,7 +27,7 @@ describe('GET /tasks', () => {
       createdAt: new Date('2026-01-02T00:00:00Z'),
     });
 
-    const res = await app.request('/tasks');
+    const res = await client.tasks.$get();
     expect(res.status).toBe(200);
 
     const rows = (await res.json()) as Array<Record<string, unknown>>;
@@ -42,7 +43,7 @@ describe('GET /tasks', () => {
   });
 
   it('returns an empty array when there are no tasks', async () => {
-    const res = await app.request('/tasks');
+    const res = await client.tasks.$get();
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);
   });

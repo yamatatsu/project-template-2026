@@ -1,3 +1,4 @@
+import { testClient } from 'hono/testing';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { migrateTestDb, seedSessionUser, testSession, withSession } from '../__tests__/support.ts';
@@ -16,9 +17,9 @@ afterEach(() => db.delete(users));
 describe('GET /me', () => {
   it('returns the identity and member permissions for a JIT-provisioned user', async () => {
     const session = testSession({ userSub: 'member-sub', email: 'member@example.com' });
-    const app = withSession(meRoute, session);
+    const client = testClient(withSession(meRoute, session));
 
-    const res = await app.request('/me');
+    const res = await client.me.$get();
 
     expect(res.status).toBe(200);
     // 初回アクセスは JIT で role=member → task:read のみ。
@@ -32,9 +33,9 @@ describe('GET /me', () => {
   it('returns task:write in permissions for an admin', async () => {
     const session = testSession({ userSub: 'admin-sub', email: undefined });
     await seedSessionUser(db, 'admin', session);
-    const app = withSession(meRoute, session);
+    const client = testClient(withSession(meRoute, session));
 
-    const res = await app.request('/me');
+    const res = await client.me.$get();
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({

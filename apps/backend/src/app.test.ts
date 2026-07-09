@@ -1,4 +1,5 @@
 import { loadAuthConfigFromEnv } from '@icasu/backend-auth';
+import { testClient } from 'hono/testing';
 import { describe, expect, it } from 'vitest';
 
 import { createApp } from './app.ts';
@@ -19,17 +20,17 @@ const TEST_ENV: Record<string, string> = {
   SESSION_TABLE_NAME: 'sessions',
 };
 
-const app = createApp({ auth: loadAuthConfigFromEnv(TEST_ENV) });
+const client = testClient(createApp({ auth: loadAuthConfigFromEnv(TEST_ENV) }));
 
 describe('createApp', () => {
   it('保護ルートは未認証だと 401（requireSession が組み込まれていることの smoke test）', async () => {
-    const res = await app.request('/tasks');
+    const res = await client.tasks.$get();
 
     expect(res.status).toBe(401);
   });
 
   it('/me も保護グループ配下で未認証だと 401（apps/backend 所有に移設済み）', async () => {
-    const res = await app.request('/me');
+    const res = await client.me.$get();
 
     expect(res.status).toBe(401);
   });

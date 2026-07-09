@@ -32,8 +32,6 @@ export async function migrateTestDb(db: unknown) {
   await migrate(db as never, { migrationsFolder });
 }
 
-export const JSON_HEADERS = { 'content-type': 'application/json' };
-
 /**
  * 新規行の監査系カラム（id / version / 監査タイムスタンプ）をまとめて作るテスト専用ヘルパ。本番のカラム値
  * 決定はドメイン（`createTask` / `createUser`）が担い、これは seed が任意の行を素早く挿入するためだけのもの。
@@ -63,8 +61,9 @@ export async function seedSessionUser(
 
 /**
  * ルート単体テスト用ハーネス。本番は合成点の `requireSession` が session を Context に載せるが、
- * ルート単体（`app.request`）にはそれが無く、authZ ミドルウェアが `c.get('session')` で落ちる。
- * リクエスト前に session を注入する薄い親 app で対象ルートを包み、認可まで込みで検証できるようにする。
+ * ルート単体にはそれが無く、authZ ミドルウェアが `c.get('session')` で落ちる。リクエスト前に session を
+ * 注入する薄い親 app で対象ルートを包み、認可まで込みで検証できるようにする。テストはこの戻り値を
+ * `testClient` に渡して型付き RPC で叩く（`.route('/', app)` はスキーマ型を保つので RPC 型は維持される）。
  */
 export function withSession<E extends Env, S extends Schema, P extends string>(
   app: Hono<E, S, P>,

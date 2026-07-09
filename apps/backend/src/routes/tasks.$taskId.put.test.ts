@@ -1,19 +1,17 @@
+import type { InferRequestType } from 'hono/client';
+import { testClient } from 'hono/testing';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  JSON_HEADERS,
-  migrateTestDb,
-  seedSessionUser,
-  testSession,
-  withSession,
-} from '../__tests__/support.ts';
+import { migrateTestDb, seedSessionUser, testSession, withSession } from '../__tests__/support.ts';
 import { seedTask } from './__tests__/seed.ts';
 
 vi.mock('@icasu/db/client', () =>
   import('../__tests__/support.ts').then((m) => m.createTestDbModule()),
 );
 
-const app = withSession((await import('./tasks.$taskId.put.ts')).default, testSession());
+const client = testClient(
+  withSession((await import('./tasks.$taskId.put.ts')).default, testSession()),
+);
 const { db } = await import('@icasu/db/client');
 const { tasks, users } = await import('@icasu/db/schema');
 
@@ -25,9 +23,11 @@ afterEach(async () => {
   await db.delete(users);
 });
 
+type TaskInput = InferRequestType<(typeof client.tasks)[':id']['$put']>['json'];
+
 // PUT は全フィールド必須（リソース全体の置換）。テストは全フィールドを持つボディを基準に、
 // 検証したい項目だけ上書きする。楽観ロックの版は body ではなく If-Match ヘッダで送る。
-const validBody = (overrides: Record<string, unknown> = {}) => ({
+const validBody = (overrides: Partial<TaskInput> = {}): TaskInput => ({
   title: 'new title',
   description: null,
   status: 'todo',
@@ -36,8 +36,9 @@ const validBody = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-// If-Match の entity-tag（"<version>"）に版を載せる。JSON ボディ用ヘッダとまとめて渡す。
-const headersFor = (version: number) => ({ ...JSON_HEADERS, 'If-Match': `"${version}"` });
+// If-Match の entity-tag（"<version>"）に版を載せる。楽観ロックの版は header 検証で RPC の型に
+// 載るので、リクエストの header フィールドに渡す（Hono がヘッダ名を小文字化するのでキーは if-match）。
+const ifMatch = (version: number) => ({ 'if-match': `"${version}"` });
 
 describe('PUT /tasks/:id', () => {
   it('replaces the whole resource and bumps the version', async () => {
@@ -48,11 +49,11 @@ describe('PUT /tasks/:id', () => {
       priority: 'low',
     });
 
-    const res = await app.request(`/tasks/${created.id}`, {
-      method: 'PUT',
-      headers: headersFor(created.version),
+    const res = await client.tasks[':id'].$put({
+      param: { id: created.id },
       // 全体置換: description を送らない（null）ので既存値は消える。
-      body: JSON.stringify(validBody({ status: 'done' })),
+      json: validBody({ status: 'done' }),
+      header: ifMatch(created.version),
     });
 
     expect(res.status).toBe(200);
@@ -71,10 +72,10 @@ describe('PUT /tasks/:id', () => {
   it('returns 412 on a stale If-Match version and leaves the row untouched', async () => {
     const created = await seedTask(db, { title: 'todo task' });
 
-    const res = await app.request(`/tasks/${created.id}`, {
-      method: 'PUT',
-      headers: headersFor(created.version - 1),
-      body: JSON.stringify(validBody({ title: 'clobber' })),
+    const res = await client.tasks[':id'].$put({
+      param: { id: created.id },
+      json: validBody({ title: 'clobber' }),
+      header: ifMatch(created.version - 1),
     });
 
     // If-Match 不一致は precondition 失敗（412）。通知は「競合したこと・対象 entity」のみ。
@@ -93,11 +94,11 @@ describe('PUT /tasks/:id', () => {
   it('returns 428 when If-Match is absent (optimistic lock required)', async () => {
     const created = await seedTask(db, { title: 'todo task' });
 
-    const res = await app.request(`/tasks/${created.id}`, {
-      method: 'PUT',
-      headers: JSON_HEADERS,
-      body: JSON.stringify(validBody({ title: 'clobber' })),
-    });
+    // If-Match を送らない検証。header は RPC 型で必須なので、欠如を再現するため型を外して送る。
+    const res = await client.tasks[':id'].$put({
+      param: { id: created.id },
+      json: validBody({ title: 'clobber' }),
+    } as never);
 
     expect(res.status).toBe(428);
     // precondition が無いので更新されていない。
@@ -109,20 +110,21 @@ describe('PUT /tasks/:id', () => {
   it('rejects a body missing required fields with 400', async () => {
     const created = await seedTask(db, { title: 'todo task' });
 
-    const res = await app.request(`/tasks/${created.id}`, {
-      method: 'PUT',
-      headers: headersFor(created.version),
-      body: JSON.stringify({ title: 'only title' }),
+    const res = await client.tasks[':id'].$put({
+      param: { id: created.id },
+      // 必須フィールド欠落は型契約にも反する。zValidator の 400 を確かめるため json だけ型を外す。
+      json: { title: 'only title' } as never,
+      header: ifMatch(created.version),
     });
 
     expect(res.status).toBe(400);
   });
 
   it('returns 404 when updating a non-existent uuid', async () => {
-    const res = await app.request('/tasks/00000000-0000-0000-0000-000000000000', {
-      method: 'PUT',
-      headers: headersFor(1),
-      body: JSON.stringify(validBody()),
+    const res = await client.tasks[':id'].$put({
+      param: { id: '00000000-0000-0000-0000-000000000000' },
+      json: validBody(),
+      header: ifMatch(1),
     });
 
     expect(res.status).toBe(404);

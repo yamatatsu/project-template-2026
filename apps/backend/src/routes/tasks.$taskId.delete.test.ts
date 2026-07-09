@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import { testClient } from 'hono/testing';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { migrateTestDb, seedSessionUser, testSession, withSession } from '../__tests__/support.ts';
@@ -8,7 +9,9 @@ vi.mock('@icasu/db/client', () =>
   import('../__tests__/support.ts').then((m) => m.createTestDbModule()),
 );
 
-const app = withSession((await import('./tasks.$taskId.delete.ts')).default, testSession());
+const client = testClient(
+  withSession((await import('./tasks.$taskId.delete.ts')).default, testSession()),
+);
 const { db } = await import('@icasu/db/client');
 const { tasks, users } = await import('@icasu/db/schema');
 
@@ -24,7 +27,7 @@ describe('DELETE /tasks/:id', () => {
   it('deletes an existing task and removes it from the table', async () => {
     const created = await seedTask(db, { title: 'delete me' });
 
-    const res = await app.request(`/tasks/${created.id}`, { method: 'DELETE' });
+    const res = await client.tasks[':id'].$delete({ param: { id: created.id } });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ success: true });
 
@@ -34,8 +37,8 @@ describe('DELETE /tasks/:id', () => {
   });
 
   it('returns 404 when deleting a non-existent uuid', async () => {
-    const res = await app.request('/tasks/00000000-0000-0000-0000-000000000000', {
-      method: 'DELETE',
+    const res = await client.tasks[':id'].$delete({
+      param: { id: '00000000-0000-0000-0000-000000000000' },
     });
 
     expect(res.status).toBe(404);
