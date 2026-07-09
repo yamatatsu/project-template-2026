@@ -12,9 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1074.0",
-    "@aws-sdk/lib-dynamodb": "^3.1074.0",
-    "hono": "^4.12.27",
+    "@aws-sdk/client-dynamodb": "^3.1072.0",
+    "@aws-sdk/lib-dynamodb": "^3.1072.0",
+    "hono": "^4.12.26",
     "jose": "^6.2.3"
   },
   "devDependencies": {

@@ -2,18 +2,9 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
-# vite（8 系）とそのバンドラ rolldown、wasm フォールバックバインディングのツールチェーン
-# （napi-rs / emnapi / tybys）は頻繁にリリースされ、プラットフォーム別バイナリも大量に publish
-# するため minimumReleaseAge 制約に常に引っかかる。いずれも vite 公式のビルドツールチェーンで
-# 信頼できるため除外する。
-minimumReleaseAgeExclude:
-  - 'vite'
-  - '@vitejs/*'
-  - 'rolldown'
-  - '@rolldown/*'
-  - '@napi-rs/*'
-  - '@emnapi/*'
-  - '@tybys/*'
+# publish 直後のパッケージはインストールしない（分単位）
+# 21 日 = 21 * 24 * 60
+minimumReleaseAge: 30240
 
 # esbuild は postinstall スクリプトでプラットフォーム別バイナリを配置する。CDK の
 # NodejsFunction が API Lambda をローカルでバンドルできるよう（Docker 不要）許可する。

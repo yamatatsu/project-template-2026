@@ -30,9 +30,9 @@
   "devDependencies": {
     "esbuild": "^0.25.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.8",
-    "oxfmt": "^0.56.0",
-    "oxlint": "^1.71.0",
+    "lint-staged": "^17.0.7",
+    "oxfmt": "^0.55.0",
+    "oxlint": "^1.70.0",
     "typescript": "7.0.1-rc"
   },
   "lint-staged": {

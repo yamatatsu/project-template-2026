@@ -20,7 +20,7 @@
     "@icasu/db": "workspace:*",
     "@icasu/simple-result": "workspace:*",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.27",
+    "hono": "^4.12.26",
     "zod": "^4.4.3"
   },
   "devDependencies": {

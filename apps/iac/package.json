@@ -15,7 +15,7 @@
     "@icasu/db": "workspace:*",
     "aws-cdk-lib": "^2.260.0",
     "constructs": "^10.4.2",
-    "hono": "^4.12.27"
+    "hono": "^4.12.26"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
