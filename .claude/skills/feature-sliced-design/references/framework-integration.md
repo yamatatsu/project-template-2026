@@ -172,8 +172,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ProfilePage } from "@/pages/profile";
 
 export const Route = createFileRoute("/profile/$id")({
-  component: ProfilePage,
+  component: RouteComponent,
 });
+
+// Read path params in the route file (app layer) and pass them down as props.
+// Route.useParams() is bound to this Route, so it needs no `from` string and
+// stays type-safe. The page never learns its own route id — see the coupling
+// note below.
+function RouteComponent() {
+  const { id } = Route.useParams();
+  return <ProfilePage id={id} />;
+}
 ```
 
 ```tsx
@@ -214,11 +223,19 @@ own no business logic.
 > Prefer file-based flat routes when the route count is growing; prefer
 > code-based when routes are few and you want zero generated artifacts.
 
-> **`useParams({ from })` coupling**: page components that read typed params
-> via `useParams({ from: "<route id>" })` must use the route id from the
-> generated tree. With the `*.index.tsx` convention an index route id carries
-> a trailing slash (e.g. `/tasks/$taskId/`), which differs from the
-> code-based id (`/tasks/$taskId`).
+> **Pass path params as props; don't let pages read `useParams({ from })`**: a
+> page that calls `useParams({ from: "<route id>" })` hard-codes the route id it
+> is mounted at — an app-layer (routing) concern leaking into a lower layer,
+> which reverses the dependency direction and makes the page unusable at any
+> other path. Read params in the route file with `Route.useParams()` (bound to
+> `Route`, so no `from` string and fully type-safe) and inject the value as a
+> prop, as in the `profile.$id.tsx` example above. The page then stays pure and
+> prop-driven — reusable and testable in isolation.
+>
+> If you ever do reach for `useParams({ from })` (e.g. a hook shared across
+> routes), note that with the `*.index.tsx` convention an index route id carries
+> a trailing slash (e.g. `/tasks/$taskId/`), which differs from the code-based
+> id (`/tasks/$taskId`).
 
 ## Key Reminders
 

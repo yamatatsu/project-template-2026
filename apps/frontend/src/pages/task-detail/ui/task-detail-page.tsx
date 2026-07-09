@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 
 import { TaskPriorityBadge, TaskStatusBadge, taskDetailQuery } from '@/entities/task';
 import { DeleteTaskButton } from '@/features/delete-task';
@@ -7,8 +7,7 @@ import { formatDateTime } from '@/shared/lib/utils';
 import { ButtonLink } from '@/shared/ui/button-link';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/shared/ui/card';
 
-export function TaskDetailPage() {
-  const { taskId } = useParams({ from: '/_admin/tasks/$taskId/' });
+export function TaskDetailPage({ taskId }: { taskId: string }) {
   const navigate = useNavigate();
   const { data: task, isPending, isError } = useQuery(taskDetailQuery(taskId));
 
