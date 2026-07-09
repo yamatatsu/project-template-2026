@@ -10,10 +10,8 @@ export async function findUserBySub(userSub: string): Promise<User | null> {
 }
 
 /**
- * createUser が組み立てた新規 User を追加する。別サインアップ導線を持たない JIT プロビジョニングでは複数の
- * 初回リクエストが同時到達しうるので、`unique(user_sub)` + `onConflictDoNothing` で重複を吸収する
- * （負け側は黙って捨てられる）。競合時は insert が行を返さず「勝った行」も分からないため、
- * add は成否を返さず void とし、正準な行は呼び出し側が `findUserBySub` で読み直して収束させる。
+ * 新規 User を追加する。並行初回アクセスで重複しうるので `unique(user_sub)` + `onConflictDoNothing` で
+ * 吸収する。競合時は「勝った行」を返せないため void とし、正準な行は呼び出し側が読み直して収束させる。
  */
 export async function addUser(user: User): Promise<void> {
   const { id, userSub, role, meta } = user;

@@ -1,7 +1,6 @@
 import { type Result, err, ok } from '@icasu/simple-result';
 
-// ドメインの語彙（取りうる値の集合）はここが単一の定義源。境界の zod（wire）も DB（将来的に
-// packages/domains 切り出し後）もこの配列から派生させ、infra→domain の依存方向にそろえる。
+// ドメインの語彙（取りうる値の集合）の単一定義源。
 export const taskStatusValues = ['todo', 'in_progress', 'done'] as const;
 export const taskPriorityValues = ['low', 'medium', 'high'] as const;
 export type TaskStatus = (typeof taskStatusValues)[number];
@@ -28,7 +27,7 @@ export type TaskCreateCommand = {
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: Date | null;
-  // 作成者はクライアント入力ではなく authZ が解決した User。命令の一部としてルートから渡す。
+  // 作成者は命令の一部として受け取る（生成側で自己決定しない）。
   createdBy: string;
 };
 
@@ -50,12 +49,12 @@ export type VersionConflict = {
   actual: number; // ロード時点で DB にあった版
 };
 
-// 新規 Task の版の起点。増分（applyUpdate の +1）と対をなす「版はどこから始まるか」もドメインの決定。
+// 新規 Task の版の起点（版の決定はドメインの責務）。
 const INITIAL_VERSION = 1;
 
 /**
  * 命令から新規 Task を組み立てる純粋関数（副作用なし・DB を触らない）。版は INITIAL_VERSION に固定し、
- * id・now は意図ではなく実行時コンテキストとして外から注入する（applyUpdate の now 注入と同じ切り分け）。
+ * id・now は意図ではなく実行時コンテキストとして外から注入する。
  */
 export function createTask(
   command: TaskCreateCommand,
@@ -91,7 +90,7 @@ export function applyUpdate(
 /**
  * 楽観ロックの前提（クライアントが土台にした版＝ロードした版）を検証する純粋関数。「版競合とは何か」の
  * 判断を 1 か所に閉じ、applyUpdate が内部で使う。成功時は検証済みの current をそのまま返し、
- * 呼び出し側が続けて遷移に進めるようにする（DELETE に楽観ロックを足すなら同じくここを共用できる）。
+ * 呼び出し側が続けて遷移に進めるようにする。
  */
 export function ensureExpectedVersion(
   current: Task,

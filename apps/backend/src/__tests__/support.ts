@@ -32,9 +32,8 @@ export async function migrateTestDb(db: unknown) {
 export const JSON_HEADERS = { 'content-type': 'application/json' };
 
 /**
- * 新規行にアプリが与える監査系カラム（id / version / 監査タイムスタンプ）をまとめて作る、seed 用の汎用ヘルパ。
- * 本番のカラム値決定はドメイン（`createTask` / `createUser`）が担うので、これは feature の seed が任意の
- * role / status を持つ行を素早く挿入するための**テスト専用**（かつては runtime の橋渡しだったが退役済み）。
+ * 新規行の監査系カラム（id / version / 監査タイムスタンプ）をまとめて作るテスト専用ヘルパ。本番のカラム値
+ * 決定はドメイン（`createTask` / `createUser`）が担い、これは seed が任意の行を素早く挿入するためだけのもの。
  */
 export function newRowColumns() {
   const now = new Date();

@@ -21,11 +21,10 @@ const TEST_ENV: Record<string, string> = {
 
 const app = createApp({ auth: loadAuthConfigFromEnv(TEST_ENV) });
 
-describe('GET /hello-world', () => {
-  it('responds with the hello world message as JSON', async () => {
-    const res = await app.request('/hello-world');
+describe('createApp', () => {
+  it('保護ルートは未認証だと 401（requireSession が組み込まれていることの smoke test）', async () => {
+    const res = await app.request('/tasks');
 
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ message: 'hello world' });
+    expect(res.status).toBe(401);
   });
 });

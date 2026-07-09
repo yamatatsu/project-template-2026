@@ -19,8 +19,8 @@ export async function seedTask(
   values: Partial<NewTask> & { title: string },
 ): Promise<Task> {
   const { tasks } = await import('@icasu/db/schema');
-  // status / priority は DB デフォルトを撤去したため（アプリが値を決める方針）、seed でも埋める。
-  // id / version / タイムスタンプはアプリ同様 newRowColumns() で付与する（呼び出し側で上書き可）。
+  // status / priority はアプリが値を決める方針で DB デフォルトが無いため seed でも埋める。
+  // id / version / タイムスタンプは newRowColumns() で付与する（呼び出し側で上書き可）。
   const [row] = await db
     .insert(tasks)
     .values({

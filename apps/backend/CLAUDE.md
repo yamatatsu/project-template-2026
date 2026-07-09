@@ -3,6 +3,10 @@
 BFF（Hono on Node.js / Lambda）の作業ルール。全体構成・共通コマンドはルート
 [`CLAUDE.md`](../../CLAUDE.md)。
 
+**この文書が backend の設計判断（レイヤ分割・値の所有・楽観ロック・認可など）の根拠の集約先**。
+コードコメントはここへ参照させ、同じ根拠をコードに再説しない。コメントには局所の why だけ残す
+（コメント方針はルート [`CLAUDE.md`](../../CLAUDE.md)「コードコメントの方針」）。
+
 ## 合成点
 
 `createApp(config)`（`src/app.ts`）が唯一の合成点。`@icasu/backend-auth` を `/auth`・`/me` に

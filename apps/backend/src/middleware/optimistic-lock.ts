@@ -2,19 +2,16 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context } from 'hono';
 import { z } from 'zod';
 
-// 楽観的並行性制御をエンドポイントに要求するミドルウェア。ミューテーションを書くたびに使うので、`auth` と
-// 同じくルート定義に middleware 引数として差せる形にまとめる。クライアントは「編集の土台にした版」を送り、
-// stale な書き込みは弾く——というのがここで足す API 仕様。名前は仕様（意図）で付け、実装メカニズム（HTTP の
-// `If-Match` ヘッダ）はこのファイル内に閉じる。
+// 楽観ロックをエンドポイントに要求するミドルウェア。名前は仕様（意図）で付け、実装メカニズム（HTTP の
+// `If-Match` ヘッダ）はこのファイル内に閉じる。受理するのは precondition（存在・形式）まで。実際の版一致
+// 判定はドメイン（`applyUpdate`）と repo の CAS（`saveTask`）が行う。
 //
-// 版は precondition でリソースの内容ではないので body ではなくヘッダで運び、`zValidator('header')` で
-// **RPC の型（InferRequestType）に載せて送信を型で強制**する（手読みだと型に現れず送り忘れを検出できない）。
-// なお、ここが担うのはクライアント側 precondition の受理（存在・形式）まで。実際の版一致判定は
-// ドメイン（`applyUpdate`）と repo の CAS（`saveTask`）が行う。
+// 版はヘッダで運び `zValidator('header')` で RPC の型（InferRequestType）に載せて送信を型で強制する
+// （手読みだと型に現れず送り忘れを検出できない）。
 
 // strong な単一 entity-tag（`"<version>"`）のみ受理し、`*`・weak タグ（`W/"…"`）・複数タグは弾く（版を
-// 一意に定められない／楽観ロックを迂回するため）。中身（version 列＝整数）を数値にパースする
-// （"parse, don't validate"）。Hono がヘッダ名を小文字化するのでキーは `if-match`。
+// 一意に定められない／楽観ロックを迂回するため）。中身を数値にパースする（"parse, don't validate"）。
+// Hono がヘッダ名を小文字化するのでキーは `if-match`。
 const versionHeaderSchema = z.object({
   'if-match': z
     .string()
