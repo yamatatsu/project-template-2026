@@ -1,7 +1,13 @@
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { JSON_HEADERS, migrateTestDb, testSession, withSession } from '../__tests__/support.ts';
+import {
+  JSON_HEADERS,
+  migrateTestDb,
+  seedSessionUser,
+  testSession,
+  withSession,
+} from '../__tests__/support.ts';
 
 vi.mock('@icasu/db/client', () =>
   import('../__tests__/support.ts').then((m) => m.createTestDbModule()),
@@ -12,7 +18,12 @@ const { db } = await import('@icasu/db/client');
 const { tasks, users } = await import('@icasu/db/schema');
 
 beforeAll(() => migrateTestDb(db));
-afterEach(() => db.delete(tasks));
+// POST は task:write（admin 限定）なので、session ユーザーを admin として用意する。
+beforeEach(() => seedSessionUser(db, 'admin'));
+afterEach(async () => {
+  await db.delete(tasks);
+  await db.delete(users);
+});
 
 // リクエストは全フィールド必須（DB デフォルトに委ねない方針）。テストは全フィールドを持つ
 // 有効ボディを基準に、検証したい項目だけ上書きする。

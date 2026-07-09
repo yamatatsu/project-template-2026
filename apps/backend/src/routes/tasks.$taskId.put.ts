@@ -9,7 +9,7 @@ import { taskIdParamSchema, taskInputSchema, toTaskResponse } from '../wire/task
 
 export default new Hono().put(
   '/tasks/:id',
-  auth({ for: 'user' }),
+  auth({ action: 'task:write' }),
   zValidator('param', taskIdParamSchema),
   // 楽観ロック: クライアントが土台にした版を If-Match で要求する（詳細は middleware/optimistic-lock.ts）。
   requireOptimisticLock(),

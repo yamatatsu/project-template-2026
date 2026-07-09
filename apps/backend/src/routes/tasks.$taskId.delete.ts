@@ -7,7 +7,7 @@ import { taskIdParamSchema } from '../wire/task.ts';
 
 export default new Hono().delete(
   '/tasks/:id',
-  auth({ for: 'user' }),
+  auth({ action: 'task:write' }),
   zValidator('param', taskIdParamSchema),
   async (c) => {
     const { id } = c.req.valid('param');

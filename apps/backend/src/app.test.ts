@@ -27,4 +27,10 @@ describe('createApp', () => {
 
     expect(res.status).toBe(401);
   });
+
+  it('/me も保護グループ配下で未認証だと 401（apps/backend 所有に移設済み）', async () => {
+    const res = await app.request('/me');
+
+    expect(res.status).toBe(401);
+  });
 });

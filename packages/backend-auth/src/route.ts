@@ -11,7 +11,7 @@ import {
   generateVerifier,
 } from './libs/pkce.ts';
 import type { SessionStore } from './libs/session.ts';
-import { type AuthEnv, type RequireSession } from './middleware.ts';
+import { type AuthEnv } from './middleware.ts';
 
 /** 認証（OAuth 遷移）ルートが必要とする依存。 */
 export interface AuthRouteDeps {
@@ -26,8 +26,8 @@ export interface AuthRouteDeps {
  *
  * ここはすべて**ブラウザのフルページ遷移**専用で、RPC クライアントからは呼ばない
  * （`/callback` は IdP に登録する redirect_uri）。ホストは `/auth` にマウントする。
- * 一方「現在のユーザー」を返す JSON API は {@link createMeRoute} 側に分離し、`/api` 配下で
- * 配信する（RPC の型連携に載せるのはこちらだけ）。
+ * 「現在のユーザー」を返す JSON API（`/me`）はホスト（apps/backend）が所有する
+ * （permissions など app 固有の情報を載せるため。`requireSession` を再利用して保護する）。
  *
  * 推論された型が Hono RPC クライアント経由でフロントエンドに流れるよう、メソッドチェーンで
  * 定義する。
@@ -91,20 +91,4 @@ export function createAuthRoute(deps: AuthRouteDeps) {
       cookies.clearSessionCookie(c);
       return c.redirect(oidc.buildLogoutUrl(idToken));
     });
-}
-
-/**
- * 「現在のユーザー」を返す JSON API（`GET /me`）を組み立てる。
- *
- * OAuth 遷移（{@link createAuthRoute}）とは性質が異なり、これは RPC クライアント／
- * TanStack Query が fetch で叩く純粋な JSON API。そのためリダイレクト系とは別ルートにして
- * `/api` 配下（`/api/me`）で配信し、`AppType` 経由の型連携に載せる。
- */
-export function createMeRoute(deps: { requireSession: RequireSession }) {
-  const { requireSession } = deps;
-
-  return new Hono<AuthEnv>().get('/', requireSession, (c) => {
-    const session = c.get('session');
-    return c.json({ userSub: session.userSub, email: session.email });
-  });
 }

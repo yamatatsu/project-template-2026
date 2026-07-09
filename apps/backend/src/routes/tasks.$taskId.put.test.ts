@@ -1,6 +1,12 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { JSON_HEADERS, migrateTestDb, testSession, withSession } from '../__tests__/support.ts';
+import {
+  JSON_HEADERS,
+  migrateTestDb,
+  seedSessionUser,
+  testSession,
+  withSession,
+} from '../__tests__/support.ts';
 import { seedTask } from './__tests__/seed.ts';
 
 vi.mock('@icasu/db/client', () =>
@@ -9,10 +15,15 @@ vi.mock('@icasu/db/client', () =>
 
 const app = withSession((await import('./tasks.$taskId.put.ts')).default, testSession());
 const { db } = await import('@icasu/db/client');
-const { tasks } = await import('@icasu/db/schema');
+const { tasks, users } = await import('@icasu/db/schema');
 
 beforeAll(() => migrateTestDb(db));
-afterEach(() => db.delete(tasks));
+// PUT は task:write（admin 限定）なので、session ユーザーを admin として用意する。
+beforeEach(() => seedSessionUser(db, 'admin'));
+afterEach(async () => {
+  await db.delete(tasks);
+  await db.delete(users);
+});
 
 // PUT は全フィールド必須（リソース全体の置換）。テストは全フィールドを持つボディを基準に、
 // 検証したい項目だけ上書きする。楽観ロックの版は body ではなく If-Match ヘッダで送る。

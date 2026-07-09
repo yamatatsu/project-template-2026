@@ -11,7 +11,7 @@ import { rowToTaskResponse, taskIdParamSchema } from '../wire/task.ts';
 // ワイヤ形だけは write と揃えるため rowToTaskResponse で meta ネストに整形する。
 export default new Hono().get(
   '/tasks/:id',
-  auth({ for: 'user' }),
+  auth({ action: 'task:read' }),
   zValidator('param', taskIdParamSchema),
   async (c) => {
     const { id } = c.req.valid('param');

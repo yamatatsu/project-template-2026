@@ -3,18 +3,17 @@ import { randomUUID } from 'node:crypto';
 import { type AuthEnv } from '@icasu/backend-auth';
 import { createMiddleware } from 'hono/factory';
 
+import { type Action, can } from '../authorization.ts';
 import { type User, createUser } from '../entities/user.ts';
 import { addUser, findUserBySub } from '../repositories/user-db-repo.ts';
 import type { AppEnv } from './env.ts';
 
-type Access = 'user' | 'admin';
-
 /**
  * 認可（authZ）。境界の `requireSession`（authN）が載せた session からドメイン User を解決し、
- * `c.set('user')` で注入する。`for: 'admin'` のときは role も検証する。責務は「session → users の解決 +
- * RBAC」まで。詳細は apps/backend/CLAUDE.md「認証・認可」。
+ * `c.set('user')` で注入する。`action` 指定時は Permission-based RBAC で判定する（省略時は解決のみ）。
+ * 責務は「session → users の解決 + RBAC」まで。詳細は apps/backend/CLAUDE.md「認証・認可」。
  */
-export const auth = (opts: { for: Access }) =>
+export const auth = (opts: { action?: Action } = {}) =>
   // session を読み user を書くので、内部で満たすべき Env は AppEnv & AuthEnv。
   createMiddleware<AppEnv & AuthEnv>(async (c, next) => {
     const { userSub } = c.get('session');
@@ -22,7 +21,7 @@ export const auth = (opts: { for: Access }) =>
     const user = await resolveUser(userSub);
 
     // 認証済みだが権限不足は 403（認証欠如の 401 は境界の requireSession が弾く）。
-    if (opts.for === 'admin' && user.role !== 'admin') {
+    if (opts.action && !can(user.role, opts.action)) {
       return c.json({ error: 'forbidden' }, 403);
     }
 

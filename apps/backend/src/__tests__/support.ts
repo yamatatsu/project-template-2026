@@ -14,6 +14,9 @@ import { randomUUID } from 'node:crypto';
 import type { AuthEnv, SessionContext } from '@icasu/backend-auth';
 import { type Env, Hono, type Schema } from 'hono';
 
+// 差し替え前の実クライアントの型（ランタイムは PGlite にモックされるが型はこれに合わせる）。
+type TestDb = (typeof import('@icasu/db/client'))['db'];
+
 /** `@icasu/db/client` の差し替えモジュール。PGlite 上の drizzle クライアントを返す。 */
 export async function createTestDbModule() {
   const { PGlite } = await import('@electric-sql/pglite');
@@ -43,6 +46,19 @@ export function newRowColumns() {
 /** テスト用の既定 session。`userSub` を上書きして role 別ケースを作る。 */
 export function testSession(overrides: Partial<SessionContext> = {}): SessionContext {
   return { sessionId: 'test-session', userSub: 'test-user', email: undefined, ...overrides };
+}
+
+/**
+ * session の `userSub` に対応する users 行を指定 role で seed する。write 系ルートは task:write
+ * （admin 限定）を要求するため、既定の member（JIT プロビジョニング）ではなく admin を用意する用途。
+ */
+export async function seedSessionUser(
+  db: TestDb,
+  role: 'member' | 'admin',
+  session: SessionContext = testSession(),
+): Promise<void> {
+  const { users } = await import('@icasu/db/schema');
+  await db.insert(users).values({ ...newRowColumns(), userSub: session.userSub, role });
 }
 
 /**

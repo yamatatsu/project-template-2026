@@ -21,9 +21,9 @@ const session = (userSub: string): SessionContext => ({
   email: undefined,
 });
 
-/** `for` に応じた保護ルート（解決した user を返す）を session 注入込みで組む。 */
-function probeApp(access: 'user' | 'admin', userSub: string) {
-  const route = new Hono().get('/probe', auth({ for: access }), (c) =>
+/** action を要求する保護ルート（解決した user を返す）を session 注入込みで組む。 */
+function probeApp(action: 'task:read' | 'task:write', userSub: string) {
+  const route = new Hono().get('/probe', auth({ action }), (c) =>
     c.json({ id: c.get('user').id, role: c.get('user').role }),
   );
   return withSession(route, session(userSub));
@@ -31,7 +31,7 @@ function probeApp(access: 'user' | 'admin', userSub: string) {
 
 describe('auth middleware', () => {
   it('provisions a user JIT on first access and defaults role to member', async () => {
-    const res = await probeApp('user', 'sub-new').request('/probe');
+    const res = await probeApp('task:read', 'sub-new').request('/probe');
 
     expect(res.status).toBe(200);
     expect(((await res.json()) as { role: string }).role).toBe('member');
@@ -44,23 +44,30 @@ describe('auth middleware', () => {
   it('resolves an existing user without creating a duplicate', async () => {
     await db.insert(users).values({ ...newRowColumns(), userSub: 'sub-existing', role: 'admin' });
 
-    const res = await probeApp('admin', 'sub-existing').request('/probe');
+    const res = await probeApp('task:read', 'sub-existing').request('/probe');
 
     expect(res.status).toBe(200);
     expect(await db.select().from(users)).toHaveLength(1);
   });
 
-  it('returns 403 when a member hits an admin-only route', async () => {
-    const res = await probeApp('admin', 'sub-member').request('/probe');
+  it('allows a member (JIT default) through a task:read route', async () => {
+    const res = await probeApp('task:read', 'sub-member').request('/probe');
+
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { role: string }).role).toBe('member');
+  });
+
+  it('returns 403 when a member hits a task:write route', async () => {
+    const res = await probeApp('task:write', 'sub-member').request('/probe');
 
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({ error: 'forbidden' });
   });
 
-  it('allows an admin through an admin-only route', async () => {
+  it('allows an admin through a task:write route', async () => {
     await db.insert(users).values({ ...newRowColumns(), userSub: 'sub-admin', role: 'admin' });
 
-    const res = await probeApp('admin', 'sub-admin').request('/probe');
+    const res = await probeApp('task:write', 'sub-admin').request('/probe');
 
     expect(res.status).toBe(200);
     expect(((await res.json()) as { role: string }).role).toBe('admin');

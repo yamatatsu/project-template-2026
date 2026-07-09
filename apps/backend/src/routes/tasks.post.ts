@@ -10,7 +10,7 @@ import { taskInputSchema, toTaskResponse } from '../wire/task.ts';
 
 export default new Hono().post(
   '/tasks',
-  auth({ for: 'user' }),
+  auth({ action: 'task:write' }),
   zValidator('json', taskInputSchema),
   async (c) => {
     const input = c.req.valid('json');

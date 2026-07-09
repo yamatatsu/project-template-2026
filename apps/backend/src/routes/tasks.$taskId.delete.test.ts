@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { migrateTestDb, testSession, withSession } from '../__tests__/support.ts';
+import { migrateTestDb, seedSessionUser, testSession, withSession } from '../__tests__/support.ts';
 import { seedTask } from './__tests__/seed.ts';
 
 vi.mock('@icasu/db/client', () =>
@@ -10,10 +10,15 @@ vi.mock('@icasu/db/client', () =>
 
 const app = withSession((await import('./tasks.$taskId.delete.ts')).default, testSession());
 const { db } = await import('@icasu/db/client');
-const { tasks } = await import('@icasu/db/schema');
+const { tasks, users } = await import('@icasu/db/schema');
 
 beforeAll(() => migrateTestDb(db));
-afterEach(() => db.delete(tasks));
+// DELETE は task:write（admin 限定）なので、session ユーザーを admin として用意する。
+beforeEach(() => seedSessionUser(db, 'admin'));
+afterEach(async () => {
+  await db.delete(tasks);
+  await db.delete(users);
+});
 
 describe('DELETE /tasks/:id', () => {
   it('deletes an existing task and removes it from the table', async () => {

@@ -1,11 +1,12 @@
+import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { loadAuthConfigFromEnv } from './libs/config.ts';
 import { createCookies } from './libs/cookie.ts';
 import { createOidcClient, TokenError } from './libs/oidc.ts';
 import type { PendingAuth, SessionData, SessionStore } from './libs/session.ts';
-import { createRequireSession } from './middleware.ts';
-import { createAuthRoute, createMeRoute } from './route.ts';
+import { type AuthEnv, createRequireSession } from './middleware.ts';
+import { createAuthRoute } from './route.ts';
 
 /**
  * BFF 認証フローの仕様。
@@ -60,10 +61,11 @@ function createInMemoryStore(): SessionStore {
   };
 }
 
-// nav（login/callback/logout）と me（JSON API）は別ルートに分かれたが、cookies/store/oidc を
-// 共有するので、nav の /callback が発行した Cookie を me ルートがそのまま検証できる。
+// nav（login/callback/logout）と、requireSession で保護した最小プローブは cookies/store/oidc を
+// 共有するので、nav の /callback が発行した Cookie をプローブがそのまま検証できる（`/me` 本体は
+// ホストの apps/backend が所有するため、ここでは requireSession の統合挙動だけを見る）。
 let authRoute: ReturnType<typeof createAuthRoute>;
-let meRoute: ReturnType<typeof createMeRoute>;
+let protectedRoute: Hono<AuthEnv>;
 let exchangeCode: Mock;
 let refreshTokens: Mock;
 let verifyIdToken: Mock;
@@ -79,7 +81,10 @@ beforeEach(() => {
   const verifier = { verifyIdToken };
   const requireSession = createRequireSession({ cookies, store, oidc });
   authRoute = createAuthRoute({ cookies, store, oidc, verifier });
-  meRoute = createMeRoute({ requireSession });
+  // 保護ルートの統合挙動（Cookie 検証・自動リフレッシュ・ログアウト後の失効）を確認する最小プローブ。
+  protectedRoute = new Hono<AuthEnv>()
+    .use('*', requireSession)
+    .get('/probe', (c) => c.json(c.get('session')));
 });
 
 /** レスポンスの Set-Cookie ヘッダから `name=value` の組を取り出す。 */
@@ -182,18 +187,18 @@ describe('GET /callback', () => {
   });
 });
 
-describe('GET /me', () => {
-  it('returns the authenticated user for a valid session cookie', async () => {
+describe('protected routes (requireSession integration)', () => {
+  it('exposes the session to a protected route for a valid session cookie', async () => {
     const cookie = await authenticate({ sub: 'user-1', email: 'user@example.com' });
 
-    const res = await meRoute.request('/', { headers: { cookie } });
+    const res = await protectedRoute.request('/probe', { headers: { cookie } });
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ userSub: 'user-1', email: 'user@example.com' });
+    expect(await res.json()).toMatchObject({ userSub: 'user-1', email: 'user@example.com' });
   });
 
   it('responds 401 when no session cookie is present', async () => {
-    const res = await meRoute.request('/');
+    const res = await protectedRoute.request('/probe');
     expect(res.status).toBe(401);
     expect(await res.json()).toEqual({ error: 'unauthenticated' });
   });
@@ -211,11 +216,11 @@ describe('GET /me', () => {
       expiresIn: 3600,
     });
 
-    const res = await meRoute.request('/', { headers: { cookie } });
+    const res = await protectedRoute.request('/probe', { headers: { cookie } });
 
     expect(res.status).toBe(200);
     expect(refreshTokens).toHaveBeenCalledWith('refresh-1');
-    expect(await res.json()).toEqual({ userSub: 'user-2', email: undefined });
+    expect(await res.json()).toMatchObject({ userSub: 'user-2' });
   });
 
   it('invalidates the session when the refresh token is rejected (invalid_grant)', async () => {
@@ -225,11 +230,11 @@ describe('GET /me', () => {
     );
     refreshTokens.mockRejectedValue(new TokenError(400, '{"error":"invalid_grant"}'));
 
-    const res = await meRoute.request('/', { headers: { cookie } });
+    const res = await protectedRoute.request('/probe', { headers: { cookie } });
 
     expect(res.status).toBe(401);
     // セッションは消えている: 失効と無関係なリトライでも未認証のまま。
-    const retry = await meRoute.request('/', { headers: { cookie } });
+    const retry = await protectedRoute.request('/probe', { headers: { cookie } });
     expect(retry.status).toBe(401);
   });
 });
@@ -247,7 +252,7 @@ describe('GET /logout', () => {
     // post_logout_redirect_uri を検証してアプリへ戻すのに要る）。
     expect(location).toContain('id_token_hint=id-token');
     // ログアウト後は同じ Cookie ではもう認証されない。
-    const after = await meRoute.request('/', { headers: { cookie } });
+    const after = await protectedRoute.request('/probe', { headers: { cookie } });
     expect(after.status).toBe(401);
   });
 
