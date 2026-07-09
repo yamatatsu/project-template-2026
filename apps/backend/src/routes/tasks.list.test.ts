@@ -33,6 +33,12 @@ describe('GET /tasks', () => {
     expect(rows).toHaveLength(2);
     // 新しいものが先頭。
     expect(rows.map((row) => row.id)).toEqual([second.id, first.id]);
+    // read も write と同一のワイヤ形（監査列は meta にまとめ、トップレベルには出さない）。
+    const [newest] = rows;
+    const meta = newest?.meta as Record<string, unknown>;
+    expect(meta.version).toBe(second.version);
+    expect(typeof meta.createdAt).toBe('string');
+    expect(newest?.createdAt).toBeUndefined();
   });
 
   it('returns an empty array when there are no tasks', async () => {

@@ -102,7 +102,8 @@ export function TaskForm({ mode, task }: TaskFormProps) {
         if (mode === 'create') {
           await createMutation.mutateAsync(payload);
         } else {
-          await updateMutation.mutateAsync(payload);
+          // 楽観ロック: 編集開始時に読み込んだ version を送り返す。サーバ側で不一致なら 409。
+          await updateMutation.mutateAsync({ ...payload, version: task.version });
         }
       } catch (err) {
         setSubmitError(err instanceof Error ? err.message : '送信に失敗しました');

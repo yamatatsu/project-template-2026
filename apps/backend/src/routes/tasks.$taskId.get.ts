@@ -5,8 +5,10 @@ import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 import { auth } from '../middleware/auth.ts';
-import { taskIdParamSchema } from '../response-models/task.ts';
+import { rowToTaskResponse, taskIdParamSchema } from '../wire/task.ts';
 
+// 読み取り系はドメイン層（entities/repo）を経由せず drizzle を直書きする（mini-CQRS。詳細は CLAUDE.md）。
+// ワイヤ形だけは write と揃えるため rowToTaskResponse で meta ネストに整形する。
 export default new Hono().get(
   '/tasks/:id',
   auth({ for: 'user' }),
@@ -17,6 +19,6 @@ export default new Hono().get(
     if (!task) {
       return c.json({ error: 'Task not found' }, 404);
     }
-    return c.json(task);
+    return c.json(rowToTaskResponse(task));
   },
 );

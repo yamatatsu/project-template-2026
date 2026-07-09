@@ -1,5 +1,7 @@
 import type { NewTask, Task } from '@icasu/db/schema';
 
+import { newRowColumns } from '../../__tests__/support.ts';
+
 // 呼び出し側が渡す `db` は（型の上では）差し替え前の実クライアント。ランタイムでは PGlite に
 // モックされるが、型は `@icasu/db/client` の `db` に合わせる。
 type Db = (typeof import('@icasu/db/client'))['db'];
@@ -17,9 +19,17 @@ export async function seedTask(
   values: Partial<NewTask> & { title: string },
 ): Promise<Task> {
   const { tasks } = await import('@icasu/db/schema');
+  // status / priority は DB デフォルトを撤去したため（アプリが値を決める方針）、seed でも埋める。
+  // id / version / タイムスタンプはアプリ同様 newRowColumns() で付与する（呼び出し側で上書き可）。
   const [row] = await db
     .insert(tasks)
-    .values({ ...values, createdBy: values.createdBy ?? DEFAULT_CREATED_BY })
+    .values({
+      ...newRowColumns(),
+      status: 'todo',
+      priority: 'medium',
+      ...values,
+      createdBy: values.createdBy ?? DEFAULT_CREATED_BY,
+    })
     .returning();
   if (!row) {
     throw new Error('failed to seed task');

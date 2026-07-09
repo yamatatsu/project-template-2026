@@ -9,6 +9,8 @@
  * 参照すると初期化前アクセスになる。動的 import ならその制約を回避できる。
  */
 
+import { randomUUID } from 'node:crypto';
+
 import type { AuthEnv, SessionContext } from '@icasu/backend-auth';
 import { type Env, Hono, type Schema } from 'hono';
 
@@ -28,6 +30,16 @@ export async function migrateTestDb(db: unknown) {
 }
 
 export const JSON_HEADERS = { 'content-type': 'application/json' };
+
+/**
+ * 新規行にアプリが与える監査系カラム（id / version / 監査タイムスタンプ）をまとめて作る、seed 用の汎用ヘルパ。
+ * 本番のカラム値決定はドメイン（`createTask` / `createUser`）が担うので、これは feature の seed が任意の
+ * role / status を持つ行を素早く挿入するための**テスト専用**（かつては runtime の橋渡しだったが退役済み）。
+ */
+export function newRowColumns() {
+  const now = new Date();
+  return { id: randomUUID(), version: 1, createdAt: now, updatedAt: now };
+}
 
 /** テスト用の既定 session。`userSub` を上書きして role 別ケースを作る。 */
 export function testSession(overrides: Partial<SessionContext> = {}): SessionContext {

@@ -24,6 +24,12 @@ describe('GET /tasks/:id', () => {
     const task = (await res.json()) as Record<string, unknown>;
     expect(task.id).toBe(created.id);
     expect(task.title).toBe('find me');
+    // read も write と同一のワイヤ形（監査列は meta にまとめ、トップレベルには出さない）。
+    const meta = task.meta as Record<string, unknown>;
+    expect(meta.version).toBe(created.version);
+    expect(typeof meta.createdAt).toBe('string');
+    expect(task.version).toBeUndefined();
+    expect(task.createdAt).toBeUndefined();
   });
 
   it('returns 404 for a non-existent uuid', async () => {

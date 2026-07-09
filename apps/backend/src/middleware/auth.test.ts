@@ -2,7 +2,7 @@ import type { SessionContext } from '@icasu/backend-auth';
 import { Hono } from 'hono';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { migrateTestDb, withSession } from '../__tests__/support.ts';
+import { migrateTestDb, newRowColumns, withSession } from '../__tests__/support.ts';
 import { auth } from './auth.ts';
 
 vi.mock('@icasu/db/client', () =>
@@ -42,7 +42,7 @@ describe('auth middleware', () => {
   });
 
   it('resolves an existing user without creating a duplicate', async () => {
-    await db.insert(users).values({ userSub: 'sub-existing', role: 'admin' });
+    await db.insert(users).values({ ...newRowColumns(), userSub: 'sub-existing', role: 'admin' });
 
     const res = await probeApp('admin', 'sub-existing').request('/probe');
 
@@ -58,7 +58,7 @@ describe('auth middleware', () => {
   });
 
   it('allows an admin through an admin-only route', async () => {
-    await db.insert(users).values({ userSub: 'sub-admin', role: 'admin' });
+    await db.insert(users).values({ ...newRowColumns(), userSub: 'sub-admin', role: 'admin' });
 
     const res = await probeApp('admin', 'sub-admin').request('/probe');
 
