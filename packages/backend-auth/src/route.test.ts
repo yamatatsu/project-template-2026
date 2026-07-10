@@ -171,20 +171,25 @@ describe('GET /callback', () => {
     expect(await res.json()).toEqual({ error: 'invalid_state' });
   });
 
-  it('refuses to redirect to an off-site returnTo (open-redirect guard)', async () => {
-    const state = await startLogin('https://evil.example/phish');
-    exchangeCode.mockResolvedValue({
-      accessToken: 'access-token',
-      refreshToken: 'refresh-token',
-      idToken: 'id-token',
-      expiresIn: 3600,
-    });
-    verifyIdToken.mockResolvedValue({ sub: 'user-1' });
+  // `//…` はスキーム相対の絶対 URL、`/\…` はブラウザが `\` を `/` に正規化するため、
+  // 先頭が `/` でも外部サイトへ出てしまう。絶対 URL と合わせて 3 形すべてを固定する。
+  it.each(['https://evil.example/phish', '//evil.example/phish', '/\\evil.example/phish'])(
+    'refuses to redirect to an off-site returnTo (open-redirect guard): %s',
+    async (returnTo) => {
+      const state = await startLogin(returnTo);
+      exchangeCode.mockResolvedValue({
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        idToken: 'id-token',
+        expiresIn: 3600,
+      });
+      verifyIdToken.mockResolvedValue({ sub: 'user-1' });
 
-    const res = await authRoute.request(`/callback?code=auth-code&state=${state}`);
+      const res = await authRoute.request(`/callback?code=auth-code&state=${state}`);
 
-    expect(res.headers.get('location')).toBe('/');
-  });
+      expect(res.headers.get('location')).toBe('/');
+    },
+  );
 });
 
 describe('protected routes (requireSession integration)', () => {

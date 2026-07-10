@@ -63,10 +63,12 @@ properties は避ける。
 
 ## 9. redirect（returnTo）は同一オリジンのパスのみ許可（open-redirect ガード）
 
-callback は `pending.returnTo.startsWith('/')` のときだけそこへ、さもなくば `/` へ遷移する。
-`//evil.com` や `https://evil.com` を弾くための最小ガード。`route.test.ts` の
-"refuses to redirect to an off-site returnTo" がこの仕様を固定している。returnTo の扱いを
-変えるときはこのテストを壊さない。
+callback は `safeReturnPath`（`route.ts`）を通ったパスへだけ遷移し、さもなくば `/` へ落とす。
+**先頭が `/` かどうかだけでは守れない** —— `//evil.com` はスキーム相対の絶対 URL として、
+`/\evil.com` はブラウザが `\` を `/` に正規化して、どちらも外部サイトへ出てしまう。
+ガードは `/` 始まり **かつ** `//`・`/\` 始まりでないこと。`route.test.ts` の
+"refuses to redirect to an off-site returnTo" が絶対 URL・`//`・`/\` の 3 形を固定している。
+returnTo の扱いを変えるときはこのテストを壊さない。
 
 ## 10. state はワンタイム消費・nonce は id_token と突合
 

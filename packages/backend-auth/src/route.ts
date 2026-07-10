@@ -92,9 +92,7 @@ export function createAuthRoute(deps: AuthRouteDeps) {
       await cookies.setSessionCookie(c, sessionId);
       auditAuth('auth.login.succeeded', { actor: { userSub } });
 
-      // ログイン後の遷移先として許可するのは同一オリジンのパスのみ。
-      const dest = pending.returnTo.startsWith('/') ? pending.returnTo : '/';
-      return c.redirect(dest);
+      return c.redirect(safeReturnPath(pending.returnTo));
     })
     .get('/logout', async (c) => {
       const sessionId = await cookies.readSessionCookie(c);
@@ -112,4 +110,15 @@ export function createAuthRoute(deps: AuthRouteDeps) {
       auditAuth('auth.logout', { actor: userSub ? { userSub } : undefined });
       return c.redirect(oidc.buildLogoutUrl(idToken));
     });
+}
+
+/**
+ * ログイン後の遷移先として、同一オリジンのパスだけを通す（open-redirect ガード）。
+ * 先頭が `/` かどうかだけでは不十分 —— `//evil.com` はスキーム相対の絶対 URL として、
+ * `/\evil.com` はブラウザが `\` を `/` に正規化して、どちらも外部サイトへ遷移してしまう。
+ */
+function safeReturnPath(returnTo: string): string {
+  const isSameOriginPath =
+    returnTo.startsWith('/') && !returnTo.startsWith('//') && !returnTo.startsWith('/\\');
+  return isSameOriginPath ? returnTo : '/';
 }
