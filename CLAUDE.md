@@ -133,12 +133,19 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 （例: steiger は `apps/frontend`）。ルートには `pnpm --filter <pkg> run <script>` への薄い委譲スクリプトのみ置く。
 横断的な lint/format（oxlint/oxfmt）は意図的にルートに集約している。
 
-## 依存の追加（minimumReleaseAge）
+## 依存の追加・更新
 
-`pnpm-workspace.yaml` の `minimumReleaseAge`（21 日）により、publish 直後のパッケージはインストール
-できない。待てない依存は `minimumReleaseAgeExclude` に足すが、**除外は一時的な措置**なので、各
-エントリに「いつ待機期間を満たして除外を消せるか」の期日をコメントで書く。期日を過ぎたエントリは
-削除して `pnpm install` が通ることを確認する（バージョンを上げたら期日も更新する）。
+依存や `pnpm-lock.yaml` を触るときは `pnpm-dependencies` skill
+（`.claude/skills/pnpm-dependencies/`）を読むこと。registry は Takumi Guard プロキシ、
+`pnpm-workspace.yaml` には `minimumReleaseAge`（21 日）があり、素の pnpm とは挙動が違う。
+
+要点だけ:
+
+- `minimumReleaseAgeExclude` への追加は**一時的な措置**。各エントリに「いつ待機期間を満たして
+  除外を消せるか」の期日をコメントで書き、期日を過ぎたら削除する（バージョンを上げたら期日も更新）。
+- **lockfile を変更したらコミット前に cold cache で検証する**
+  （`.claude/skills/pnpm-dependencies/scripts/verify-lockfile-cold.sh`）。pnpm は supply-chain
+  policy の検査結果をキャッシュするため、手元の `pnpm install` が通っても CI で落ちることがある。
 
 ## docker-compose のコンテナ設定ファイル
 
