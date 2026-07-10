@@ -74,15 +74,23 @@ export function createSessionStore(cfg: AuthConfig['dynamo']): SessionStore {
       );
     },
     async consumeState(state) {
-      const key = `state#${state}`;
-      const res = await doc.send(new GetCommand({ TableName: tableName, Key: { pk: key } }));
-      if (!res.Item) return undefined;
-      await doc.send(new DeleteCommand({ TableName: tableName, Key: { pk: key } }));
-      if (typeof res.Item.ttl === 'number' && res.Item.ttl < nowSeconds()) return undefined;
+      // Get→Delete の 2 コマンドだと並行する callback が同じ state を両方読めてしまう。
+      // Delete の ReturnValues: ALL_OLD で「削除できた側だけが中身を得る」1 コマンドにし、
+      // ワンタイム消費（CSRF・リプレイ対策の前提）をアトミックにする。
+      const res = await doc.send(
+        new DeleteCommand({
+          TableName: tableName,
+          Key: { pk: `state#${state}` },
+          ReturnValues: 'ALL_OLD',
+        }),
+      );
+      const item = res.Attributes;
+      if (!item) return undefined;
+      if (typeof item.ttl === 'number' && item.ttl < nowSeconds()) return undefined;
       return {
-        codeVerifier: res.Item.codeVerifier,
-        nonce: res.Item.nonce,
-        returnTo: res.Item.returnTo,
+        codeVerifier: item.codeVerifier,
+        nonce: item.nonce,
+        returnTo: item.returnTo,
       };
     },
     async saveSession(sessionId, data) {

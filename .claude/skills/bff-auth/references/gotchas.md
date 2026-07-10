@@ -72,7 +72,9 @@ returnTo の扱いを変えるときはこのテストを壊さない。
 
 ## 10. state はワンタイム消費・nonce は id_token と突合
 
-- `state`: `consumeState` が Get→Delete して再利用不可（CSRF & リプレイ対策）。未知/消費済み
+- `state`: `consumeState` が Delete（`ReturnValues: ALL_OLD`）1 コマンドで読み取りと削除を行い
+  再利用不可（CSRF & リプレイ対策）。Get→Delete の 2 コマンドに分けると並行 callback が同じ
+  state を両方通過できてしまう（削除できた側だけが中身を得る、でアトミックにする）。未知/消費済み
   state の callback は 400。
 - `nonce`: `verifyIdToken(idToken, expectedNonce)` が JWKS/issuer/audience 検証に加え
   `payload.nonce !== expectedNonce` を弾く（id_token リプレイ対策）。`libs/jwks.ts`。
