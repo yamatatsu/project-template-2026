@@ -2,6 +2,7 @@ import { type AuthConfig, createAuth } from '@icasu/backend-auth';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
+import { requestLogger } from './middleware/request-logger.ts';
 import me from './routes/me.get.ts';
 import taskDelete from './routes/tasks.$taskId.delete.ts';
 import taskGet from './routes/tasks.$taskId.get.ts';
@@ -35,7 +36,13 @@ export function createApp(config: AppConfig) {
     .route('/', taskPut)
     .route('/', taskDelete);
 
-  return new Hono().use('*', cors()).route('/auth', auth.navRoute).route('/', applicationRoutes);
+  // requestLogger は最外周に置く。/auth 配下（認証イベントの発生源）まで含めて
+  // リクエストスコープと requestId を行き渡らせるため。
+  return new Hono()
+    .use('*', requestLogger())
+    .use('*', cors())
+    .route('/auth', auth.navRoute)
+    .route('/', applicationRoutes);
 }
 
 export type AppType = ReturnType<typeof createApp>;

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 
+import { auditAuth } from './audit.ts';
 import type { Cookies } from './libs/cookie.ts';
 import type { IdTokenVerifier } from './libs/jwks.ts';
 import type { OidcClient } from './libs/oidc.ts';
@@ -54,26 +55,42 @@ export function createAuthRoute(deps: AuthRouteDeps) {
       const code = c.req.query('code');
       const state = c.req.query('state');
       if (!code || !state) {
+        auditAuth('auth.login.failed', { outcome: 'failure', reason: 'missing-code-or-state' });
         return c.json({ error: 'invalid_request' }, 400);
       }
       const pending = await store.consumeState(state);
       if (!pending) {
+        auditAuth('auth.login.failed', { outcome: 'failure', reason: 'unknown-state' });
         return c.json({ error: 'invalid_state' }, 400);
       }
 
-      const tokens = await oidc.exchangeCode(code, pending.codeVerifier);
-      const claims = await verifier.verifyIdToken(tokens.idToken, pending.nonce);
+      // 監査のために失敗を捉えるだけで、握り潰さず再 throw する（HTTP の結果は変えない）。
+      const tokens = await oidc.exchangeCode(code, pending.codeVerifier).catch((err: unknown) => {
+        auditAuth('auth.login.failed', { outcome: 'failure', reason: 'token-exchange-failed' });
+        throw err;
+      });
+      const claims = await verifier
+        .verifyIdToken(tokens.idToken, pending.nonce)
+        .catch((err: unknown) => {
+          auditAuth('auth.login.failed', {
+            outcome: 'failure',
+            reason: 'id-token-verification-failed',
+          });
+          throw err;
+        });
 
+      const userSub = String(claims.sub);
       const sessionId = generateSessionId();
       await store.saveSession(sessionId, {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         idToken: tokens.idToken,
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expiresIn,
-        userSub: String(claims.sub),
+        userSub,
         email: typeof claims.email === 'string' ? claims.email : undefined,
       });
       await cookies.setSessionCookie(c, sessionId);
+      auditAuth('auth.login.succeeded', { actor: { userSub } });
 
       // ログイン後の遷移先として許可するのは同一オリジンのパスのみ。
       const dest = pending.returnTo.startsWith('/') ? pending.returnTo : '/';
@@ -84,11 +101,15 @@ export function createAuthRoute(deps: AuthRouteDeps) {
       // RP-initiated logout の id_token_hint 用に、セッション削除前に id_token を控える。
       // プロバイダ（Duende 等）はこれで post_logout_redirect_uri を検証し、アプリへ戻す。
       let idToken: string | undefined;
+      let userSub: string | undefined;
       if (sessionId) {
-        idToken = (await store.getSession(sessionId))?.idToken;
+        const session = await store.getSession(sessionId);
+        idToken = session?.idToken;
+        userSub = session?.userSub;
         await store.deleteSession(sessionId);
       }
       cookies.clearSessionCookie(c);
+      auditAuth('auth.logout', { actor: userSub ? { userSub } : undefined });
       return c.redirect(oidc.buildLogoutUrl(idToken));
     });
 }

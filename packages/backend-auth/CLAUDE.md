@@ -16,6 +16,7 @@ src/
   route.ts        # createAuthRoute → /login /callback /logout（/me はホスト apps/backend が所有）
   route.test.ts   # BFF フロー全体の仕様（後述）
   middleware.ts   # createRequireSession（セッション検証 + アクセストークンの自動リフレッシュ）
+  audit.ts        # 認証（authN）の監査イベント名の単一定義源 + auditAuth
   libs/
     config.ts     # AuthConfig 型 + loadAuthConfigFromEnv（env→config、起動時に一括検証）
     cookie.ts     # createCookies: 署名付きセッション Cookie（HttpOnly / SameSite=Strict / __Host-）
@@ -58,6 +59,11 @@ src/
   ならセッションを破棄して 401、その他の一過性エラーは rethrow（セッションは温存）。
 - `session.ts` は単一テーブルを `pk` で名前空間分け（`sess#<id>` / `state#<state>`）し、
   DynamoDB TTL と読み取り時の明示チェックを併用する。
+- **認証イベントは監査ログに残す**。対象はログイン成功・失敗・ログアウト・セッション無効化で、emit 口は
+  `audit.ts` の `auditAuth`、action 名の単一定義源は同ファイルの `authAuditActionValues`。identity までしか
+  知らないパッケージなので `auth.*` だけを所有し、role 由来の `authz.*` やデータ変更は `apps/backend` が持つ。
+  `@icasu/logger` は設定注入せず直接 import する（ログは横断的関心事で、注入対象は `AuthConfig` だけ）。
+  設計の根拠は [`docs/specs/logs.md`](../../docs/specs/logs.md)。
 
 ## テスト方針
 

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 
+import { audit } from '../audit.ts';
 import { createTask } from '../entities/task.ts';
 import { auth } from '../middleware/auth.ts';
 import { addTask } from '../repositories/task-db-repo.ts';
@@ -22,6 +23,7 @@ export default new Hono().post(
       { id: randomUUID(), now: new Date() },
     );
     const created = await addTask(task);
+    audit(c, 'task.created', { target: { type: 'task', id: created.id } });
     return c.json(toTaskResponse(created), 201);
   },
 );

@@ -1,5 +1,5 @@
 {
-  "name": "@icasu/backend-auth",
+  "name": "@icasu/logger",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,11 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1072.0",
-    "@aws-sdk/lib-dynamodb": "^3.1072.0",
-    "@icasu/logger": "workspace:*",
-    "hono": "^4.12.26",
-    "jose": "^6.2.3"
+    "@aws-lambda-powertools/logger": "^2.33.1"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

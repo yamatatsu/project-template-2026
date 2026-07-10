@@ -20,6 +20,7 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 | `apps/iac`                                         | AWS CDK（TypeScript）。フロント配信・API・Cognito・セッションテーブル等のインフラ。                                               |
 | `packages/db`（`@icasu/db`）                       | Drizzle のスキーマ / DB クライアント（`./schema`・`./client`・`./migrations`）。                                                  |
 | `packages/backend-auth`（`@icasu/backend-auth`）   | BFF 認証（OIDC 認可コード + PKCE）。設定注入の `createAuth(config)` と `loadAuthConfigFromEnv` を公開し、認証機能のテストも同梱。 |
+| `packages/logger`（`@icasu/logger`）               | 構造化ログと監査ログ（AWS Lambda Powertools Logger のラッパ）。全パッケージ共有の実体。                                           |
 | `packages/simple-result`（`@icasu/simple-result`） | 失敗を throw せず値で返すための最小 `Result<T, E>`（`ok` / `err`）。全パッケージ共有の実体。                                      |
 
 依存の向き: `apps/*` → `packages/*` の一方向のみ（`packages` から `apps` は参照しない）。
@@ -120,6 +121,9 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
   自動適用）は [`packages/db/CLAUDE.md`](packages/db/CLAUDE.md)。
 - **BFF 認証（`packages/backend-auth`）**: OIDC 認可コード + PKCE の Hono app。設計・公開 API・
   テスト方針は [`packages/backend-auth/CLAUDE.md`](packages/backend-auth/CLAUDE.md)。
+- **ログ（`packages/logger`）**: 公開 API と作業ルールは [`packages/logger/CLAUDE.md`](packages/logger/CLAUDE.md)、
+  監査ログの仕掛け所は [`apps/backend/CLAUDE.md`](apps/backend/CLAUDE.md)「監査ログ」。
+  **設計の根拠は [`docs/specs/logs.md`](docs/specs/logs.md)**。
 
 ## コミットの方針
 

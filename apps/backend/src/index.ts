@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server';
 import { loadAuthConfigFromEnv } from '@icasu/backend-auth';
+import { logger } from '@icasu/logger';
 
 import { type AppType, createApp } from './app.ts';
 
@@ -13,5 +14,6 @@ export { app };
 const port = Number(process.env.PORT ?? 3001);
 
 serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`Server running on http://localhost:${info.port}`);
+  // リクエスト外なのでルートの logger を直接使う（リクエストスコープはまだ無い）。
+  logger.info('server started', { url: `http://localhost:${info.port}` });
 });

@@ -1,6 +1,8 @@
+import { appendRequestKeys } from '@icasu/logger';
 import type { Context, MiddlewareHandler } from 'hono';
 import { createMiddleware } from 'hono/factory';
 
+import { auditAuth } from './audit.ts';
 import type { Cookies } from './libs/cookie.ts';
 import { type OidcClient, TokenError } from './libs/oidc.ts';
 import type { SessionData, SessionStore } from './libs/session.ts';
@@ -38,9 +40,16 @@ const REFRESH_MARGIN_SECONDS = 60;
 export function createRequireSession(deps: RequireSessionDeps): RequireSession {
   const { cookies, store, oidc } = deps;
 
-  async function invalidate(c: Context<AuthEnv>, sessionId: string): Promise<void> {
+  /** セッションを破棄する。不正アクセスの兆候になりうるので理由付きで監査に残す。 */
+  async function invalidate(
+    c: Context<AuthEnv>,
+    sessionId: string,
+    reason: string,
+    userSub: string,
+  ): Promise<void> {
     await store.deleteSession(sessionId);
     cookies.clearSessionCookie(c);
+    auditAuth('auth.session.invalidated', { outcome: 'failure', reason, actor: { userSub } });
   }
 
   async function tryRefresh(
@@ -49,7 +58,7 @@ export function createRequireSession(deps: RequireSessionDeps): RequireSession {
     session: SessionData,
   ): Promise<SessionData | undefined> {
     if (!session.refreshToken) {
-      await invalidate(c, sessionId);
+      await invalidate(c, sessionId, 'no-refresh-token', session.userSub);
       return undefined;
     }
     try {
@@ -66,7 +75,7 @@ export function createRequireSession(deps: RequireSessionDeps): RequireSession {
       return updated;
     } catch (err) {
       if (err instanceof TokenError && err.isInvalidGrant) {
-        await invalidate(c, sessionId);
+        await invalidate(c, sessionId, 'refresh-token-rejected', session.userSub);
         return undefined;
       }
       throw err;
@@ -76,12 +85,16 @@ export function createRequireSession(deps: RequireSessionDeps): RequireSession {
   return createMiddleware<AuthEnv>(async (c, next) => {
     const sessionId = await cookies.readSessionCookie(c);
     if (!sessionId) {
+      // Cookie が無いのはログイン前の正常な状態。全訪問者が踏むので監査には残さない
+      // （401 自体はアクセスログの status から追える）。
       return c.json({ error: 'unauthenticated' }, 401);
     }
 
     let session = await store.getSession(sessionId);
     if (!session) {
+      // Cookie はあるのに裏のセッションが無い＝失効か改竄。actor を特定できないので載せない。
       cookies.clearSessionCookie(c);
+      auditAuth('auth.session.invalidated', { outcome: 'failure', reason: 'session-not-found' });
       return c.json({ error: 'unauthenticated' }, 401);
     }
 
@@ -92,6 +105,9 @@ export function createRequireSession(deps: RequireSessionDeps): RequireSession {
       }
       session = refreshed;
     }
+
+    // 以降このリクエストの全ログ（アクセス・監査・診断）に actor が載る。
+    appendRequestKeys({ userSub: session.userSub });
 
     c.set('session', { sessionId, userSub: session.userSub, email: session.email });
     await next();

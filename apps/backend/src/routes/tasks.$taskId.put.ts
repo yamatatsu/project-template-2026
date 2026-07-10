@@ -1,6 +1,7 @@
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 
+import { audit } from '../audit.ts';
 import { applyUpdate } from '../entities/task.ts';
 import { auth } from '../middleware/auth.ts';
 import { requireOptimisticLock } from '../middleware/optimistic-lock.ts';
@@ -41,6 +42,16 @@ export default new Hono().put(
       return conflict();
     }
 
+    // 版と status の遷移だけを残す。本文（title 等）はユーザーが書いた内容なので証跡に写さない。
+    audit(c, 'task.updated', {
+      target: { type: 'task', id },
+      detail: {
+        fromVersion: existing.meta.version,
+        toVersion: saved.meta.version,
+        fromStatus: existing.status,
+        toStatus: saved.status,
+      },
+    });
     return c.json(toTaskResponse(saved));
   },
 );

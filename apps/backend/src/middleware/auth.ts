@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import { type AuthEnv } from '@icasu/backend-auth';
+import { appendRequestKeys } from '@icasu/logger';
 import { createMiddleware } from 'hono/factory';
 
+import { auditWithActor } from '../audit.ts';
 import { type Action, can } from '../authorization.ts';
 import { type User, createUser } from '../entities/user.ts';
 import { addUser, findUserBySub } from '../repositories/user-db-repo.ts';
@@ -20,8 +22,17 @@ export const auth = (opts: { action?: Action } = {}) =>
 
     const user = await resolveUser(userSub);
 
+    // requireSession は role を知らないので、解決できたここで足す。
+    appendRequestKeys({ role: user.role });
+
     // 認証済みだが権限不足は 403（認証欠如の 401 は境界の requireSession が弾く）。
     if (opts.action && !can(user.role, opts.action)) {
+      // 権限の無い操作の試行は不正アクセスの兆候。403 を返すだけでなく証跡に残す。
+      auditWithActor('authz.denied', user, {
+        outcome: 'failure',
+        reason: 'missing-permission',
+        detail: { requiredAction: opts.action },
+      });
       return c.json({ error: 'forbidden' }, 403);
     }
 
@@ -45,5 +56,11 @@ async function resolveUser(userSub: string): Promise<User> {
   if (!provisioned) {
     throw new Error(`failed to provision user for sub: ${userSub}`);
   }
+
+  // アカウントが存在し始めた瞬間の記録。並行初回アクセスでは両方がこの枝を通り、同じ userSub に
+  // 対して 2 件出ることがある（行は unique(user_sub) で 1 本に収束するので実害はない）。
+  auditWithActor('user.provisioned', provisioned, {
+    target: { type: 'user', id: provisioned.id },
+  });
   return provisioned;
 }

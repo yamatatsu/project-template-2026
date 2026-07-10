@@ -2,12 +2,13 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { ICluster } from '@aws-cdk/aws-dsql-alpha';
-import { Duration, Stack } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -41,7 +42,18 @@ export class Api extends Construct {
     super(scope, id);
 
     const { region } = Stack.of(this);
+    const isProd = props.stage === 'prod';
 
+    // 監査ログ（logType=audit）がここに流れるため、保持期間はデバッグの都合ではなく証跡の
+    // 要件で決める。LogGroup の既定 removalPolicy は RETAIN だが、他のリソース（Sessions）と
+    // そろえて stage で明示する。
+    const logGroup = new LogGroup(this, 'ApiFnLogs', {
+      retention: isProd ? RetentionDays.ONE_YEAR : RetentionDays.ONE_WEEK,
+      removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+    });
+
+    // Lambda Advanced Logging Controls（applicationLogLevelV2）は設定しない。有効にすると Lambda が
+    // AWS_LAMBDA_LOG_LEVEL を注入し、監査ログのレベル固定を貫通して証跡が黙って消える（docs/specs/logs.md）。
     this.apiFn = new NodejsFunction(this, 'ApiFn', {
       entry: LAMBDA_ENTRY,
       handler: 'handler',
@@ -50,10 +62,13 @@ export class Api extends Construct {
       memorySize: 512,
       timeout: Duration.seconds(30),
       depsLockFilePath: DEPS_LOCK_FILE,
+      logGroup,
       environment: {
         DSQL_ENDPOINT: props.dsqlCluster.clusterEndpoint,
         DSQL_REGION: region,
         NODE_OPTIONS: '--enable-source-maps',
+        POWERTOOLS_SERVICE_NAME: 'backend',
+        POWERTOOLS_LOG_LEVEL: 'INFO',
       },
       bundling: {
         format: OutputFormat.CJS,
