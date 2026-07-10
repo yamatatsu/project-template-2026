@@ -6,6 +6,19 @@ packages:
 # 21 日 = 21 * 24 * 60
 minimumReleaseAge: 30240
 
+# typescript は型チェックのみに使う devDependency で、実行時コード（バンドル・Lambda）には
+# 含まれない。サプライチェーン攻撃の影響面が小さい一方、リリース直後に追従したいので待機を免除する。
+# TS 7 はネイティブ実装のため本体と同時に publish される @typescript/typescript-<platform>
+# バイナリを引く。これらも免除しないと本体だけ通ってインストールが解決しない。
+#
+# 各エントリには「いつ minimumReleaseAge を満たして除外を消せるか」を書く。期日を過ぎたら
+# エントリを削除し、pnpm install が通ることを確認する（バージョンを上げたら期日も更新する）。
+minimumReleaseAgeExclude:
+  # 7.0.2（publish: 2026-07-08）→ 2026-07-29 に除外不要
+  - typescript
+  # 本体 7.0.2 と同時 publish → 2026-07-29 に除外不要
+  - '@typescript/*'
+
 # esbuild は postinstall スクリプトでプラットフォーム別バイナリを配置する。CDK の
 # NodejsFunction が API Lambda をローカルでバンドルできるよう（Docker 不要）許可する。
 # pnpm 11 で onlyBuiltDependencies（配列）から allowBuilds（マップ）へ移行。
