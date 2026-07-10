@@ -44,5 +44,9 @@ export function auditWithActor(
   actor: AuditActor,
   params: AuditParams = {},
 ): void {
-  auditLog({ ...params, action, outcome: params.outcome ?? 'success', actor });
+  // 呼び出し側は User をそのまま渡せる（構造的部分型で余剰プロパティが通る）ため、ここで証跡の
+  // 形（userSub / role のみ。docs/specs/logs.md「監査レコードの形」）に絞る。絞らないと id や
+  // meta までレコードに写り、形が崩れる。
+  const { userSub, role } = actor;
+  auditLog({ ...params, action, outcome: params.outcome ?? 'success', actor: { userSub, role } });
 }
