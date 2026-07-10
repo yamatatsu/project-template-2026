@@ -1,6 +1,8 @@
 import { type AuthConfig, createAuth } from '@icasu/backend-auth';
+import { getLogger } from '@icasu/logger';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { HTTPException } from 'hono/http-exception';
 
 import { requestLogger } from './middleware/request-logger.ts';
 import me from './routes/me.get.ts';
@@ -42,7 +44,19 @@ export function createApp(config: AppConfig) {
     .use('*', requestLogger())
     .use('*', cors())
     .route('/auth', auth.navRoute)
-    .route('/', applicationRoutes);
+    .route('/', applicationRoutes)
+    .onError((err, c) => {
+      // HTTPException は「throw が I/F」の経路で運ばれてきた意図されたレスポンスなのでそのまま返す。
+      if (err instanceof HTTPException) {
+        return err.getResponse();
+      }
+      // Hono 既定の onError は console.error に生のスタックを吐き、requestId 付きの構造化ログから
+      // 外れる。onError はリクエストスコープの内側で呼ばれる（Hono が最内周の dispatch で捕まえる）
+      // ため、getLogger() で相関キー付きのエラーログを残せる（docs/specs/logs.md）。
+      // レスポンス本文にはエラーの内訳を漏らさない。
+      getLogger().error('unhandled error', err);
+      return c.json({ error: 'internal server error' }, 500);
+    });
 }
 
 export type AppType = ReturnType<typeof createApp>;
