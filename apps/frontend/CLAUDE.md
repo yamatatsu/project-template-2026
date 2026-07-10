@@ -73,7 +73,7 @@ export function TaskDetailPage({ taskId }: { taskId: string }) {
 - **slice は public API 経由で import する**。slice 直下の `index.ts` で公開し、`@/pages/home` のように index から import する（深い相対 import を slice 外から行わない）。
 - `shared` はセグメント単位（`@/shared/ui/button`, `@/shared/lib/utils`, `@/shared/api`）で import する（`steiger.config.mjs` で `shared` の public-api ルールは緩和済み）。
 - パスエイリアスは `@/*` → `src/*`（`tsconfig.json` / `vite.config.ts`）。
-- shadcn コンポーネントは `src/shared/ui/` に置く（`components.json` の alias 設定済み。`shadcn add` の出力先も `shared/ui`）。
+- shadcn コンポーネントは `src/shared/ui/` に置く（`components.json` の alias 設定済み。`shadcn add` の出力先も `shared/ui`）。追加は `pnpm dlx shadcn@latest add <component>`。プリミティブは **Base UI** を使う（`components.json` で設定済み）。
 - 「まず単純に、必要になってから抽出する」。entities 層を最初から無理に作らない。判断は skill の reference を参照。
 
 ## バックエンド連携（型とフォーム検証）
