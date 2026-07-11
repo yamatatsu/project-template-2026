@@ -1,4 +1,4 @@
-import { keepPreviousData, queryOptions } from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 
 import { client } from '@/shared/api';
 
@@ -29,8 +29,9 @@ export function taskListQuery(params: TaskListParams) {
       }
       return res.json();
     },
-    // ページ切替中は直前のページを表示し続け、テーブルがローディング表示に戻るちらつきを防ぐ。
-    placeholderData: keepPreviousData,
+    // placeholderData は使わない。直前ページを表示し続けると、次ページ取得が終わるまで
+    // 画面が変わらず「ボタンを押しても反応がない」ラグに見えるため。未キャッシュのページは
+    // data=undefined → isPending=true となり、リスト全体がローディング表示に切り替わる。
   });
 }
 
