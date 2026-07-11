@@ -11,6 +11,7 @@ import {
   generateState,
   generateVerifier,
 } from './libs/pkce.ts';
+import { SESSION_LIFETIME_SECONDS } from './libs/session-lifetime.ts';
 import type { SessionStore } from './libs/session.ts';
 import { type AuthEnv } from './middleware.ts';
 
@@ -86,6 +87,8 @@ export function createAuthRoute(deps: AuthRouteDeps) {
         refreshToken: tokens.refreshToken,
         idToken: tokens.idToken,
         accessTokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expiresIn,
+        // セッションの絶対失効時刻はログインのこの瞬間に確定する（リフレッシュで延長しない）。
+        expiresAt: Math.floor(Date.now() / 1000) + SESSION_LIFETIME_SECONDS,
         userSub,
         email: typeof claims.email === 'string' ? claims.email : undefined,
       });

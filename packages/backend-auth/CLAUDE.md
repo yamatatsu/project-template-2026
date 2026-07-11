@@ -23,6 +23,7 @@ src/
     oidc.ts       # createOidcClient: authorize URL / トークンエンドポイント / logout URL、TokenError
     jwks.ts       # createIdTokenVerifier: id_token の JWKS 検証（jose）
     pkce.ts       # PKCE verifier/challenge・state・nonce・sessionId 生成（状態なし）
+    session-lifetime.ts # セッションの絶対寿命定数（Cookie maxAge と DynamoDB TTL の単一定義源）
     session.ts    # createSessionStore: DynamoDB 上のセッション & 一時 state ストア
     auth.test.ts  # libs 単体の仕様（後述）
 ```
@@ -58,7 +59,9 @@ src/
   プロバイダがリフレッシュトークンをローテーションすれば新しい値を保存する。`invalid_grant`
   ならセッションを破棄して 401、その他の一過性エラーは rethrow（セッションは温存）。
 - `session.ts` は単一テーブルを `pk` で名前空間分け（`sess#<id>` / `state#<state>`）し、
-  DynamoDB TTL と読み取り時の明示チェックを併用する。
+  DynamoDB TTL と読み取り時の明示チェックを併用する。**セッション寿命はログイン起点の絶対 30 日**
+  （`libs/session-lifetime.ts` が単一定義源。Cookie の maxAge と DynamoDB TTL を同じ定数から導出し、
+  リフレッシュでは延長しない）。
 - **認証イベントは監査ログに残す**。対象はログイン成功・失敗・ログアウト・セッション無効化で、emit 口は
   `audit.ts` の `auditAuth`、action 名の単一定義源は同ファイルの `authAuditActionValues`。identity までしか
   知らないパッケージなので `auth.*` だけを所有し、role 由来の `authz.*` やデータ変更は `apps/backend` が持つ。

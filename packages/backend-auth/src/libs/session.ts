@@ -12,14 +12,14 @@ import type { AuthConfig } from './config.ts';
  * DynamoDB を使ったセッション & 一時 state ストア。
  *
  * 単一テーブルを `pk` で名前空間分けする:
- *  - `sess#<sessionId>` — ユーザーのトークン（サーバ側のみ）。
+ *  - `sess#<sessionId>` — ユーザーのトークン（サーバ側のみ）。TTL はセッションの絶対失効時刻
+ *    （`SessionData.expiresAt`。ログイン時に確定し、リフレッシュの再保存でも延長されない）。
  *  - `state#<state>`    — ログインリダイレクト中だけ生きる PKCE/nonce データ。
  *
  * `ttl`（epoch 秒）が DynamoDB TTL を駆動する。DynamoDB Local は実際にはアイテムを失効
  * させないため、読み取り時にも `ttl` を明示的にチェックする。
  */
 const STATE_TTL_SECONDS = 10 * 60;
-const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 export interface PendingAuth {
   readonly codeVerifier: string;
@@ -33,6 +33,11 @@ export interface SessionData {
   readonly idToken: string;
   /** アクセストークンが失効する時刻（epoch 秒）。 */
   readonly accessTokenExpiresAt: number;
+  /**
+   * セッション自体が失効する時刻（epoch 秒）。ログイン時に確定する絶対寿命で、リフレッシュでは
+   * 延長しない（Cookie の maxAge と同じ定数から導出する。`session-lifetime.ts`）。
+   */
+  readonly expiresAt: number;
   readonly userSub: string;
   readonly email: string | undefined;
 }
@@ -97,7 +102,9 @@ export function createSessionStore(cfg: AuthConfig['dynamo']): SessionStore {
       await doc.send(
         new PutCommand({
           TableName: tableName,
-          Item: { pk: `sess#${sessionId}`, ...data, ttl: nowSeconds() + SESSION_TTL_SECONDS },
+          // TTL は保存時刻からの再計算ではなく expiresAt をそのまま書く。リフレッシュの再保存で
+          // 寿命がスライドしない（絶対寿命）ため。
+          Item: { pk: `sess#${sessionId}`, ...data, ttl: data.expiresAt },
         }),
       );
     },
@@ -112,6 +119,7 @@ export function createSessionStore(cfg: AuthConfig['dynamo']): SessionStore {
         refreshToken: res.Item.refreshToken,
         idToken: res.Item.idToken,
         accessTokenExpiresAt: res.Item.accessTokenExpiresAt,
+        expiresAt: res.Item.expiresAt,
         userSub: res.Item.userSub,
         email: res.Item.email,
       };

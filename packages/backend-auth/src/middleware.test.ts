@@ -59,6 +59,7 @@ function makeSession(overrides: Partial<SessionData> = {}): SessionData {
     refreshToken: 'refresh-1',
     idToken: 'id-1',
     accessTokenExpiresAt: nowSeconds() + 3600,
+    expiresAt: nowSeconds() + 30 * 24 * 60 * 60,
     userSub: 'user-1',
     email: 'user@example.com',
     ...overrides,
@@ -141,6 +142,27 @@ describe('when the access token is within the refresh margin', () => {
     // リフレッシュ後のアクセストークンは今からおよそ1時間有効。
     const saved = store.saveSession.mock.calls[0]![1] as SessionData;
     expect(saved.accessTokenExpiresAt).toBeGreaterThan(nowSeconds() + 3000);
+  });
+
+  it('does not extend the session lifetime on refresh (absolute expiry)', async () => {
+    // セッション寿命はログイン時に確定した絶対値。リフレッシュの再保存でスライドさせない。
+    const sessionExpiresAt = nowSeconds() + 1000;
+    store.getSession.mockResolvedValue(
+      makeSession({ accessTokenExpiresAt: nowSeconds() + 30, expiresAt: sessionExpiresAt }),
+    );
+    refreshTokens.mockResolvedValue({
+      accessToken: 'access-2',
+      refreshToken: 'refresh-2',
+      idToken: 'id-2',
+      expiresIn: 3600,
+    });
+
+    await request();
+
+    expect(store.saveSession).toHaveBeenCalledWith(
+      'sess-1',
+      expect.objectContaining({ expiresAt: sessionExpiresAt }),
+    );
   });
 
   it('keeps the existing refresh token when the provider does not rotate it', async () => {

@@ -2,8 +2,7 @@ import type { Context } from 'hono';
 import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie';
 
 import type { AuthConfig } from './config.ts';
-
-const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+import { SESSION_LIFETIME_SECONDS } from './session-lifetime.ts';
 
 /** Cookie 設定に束縛された、署名付きセッション Cookie のヘルパー。 */
 export interface Cookies {
@@ -34,7 +33,8 @@ export function createCookies(cfg: AuthConfig['cookie']): Cookies {
         secure: cfg.secure,
         sameSite: 'Strict',
         path: '/',
-        maxAge: SESSION_MAX_AGE_SECONDS,
+        // セッション本体（DynamoDB の TTL）と同じ絶対寿命。Cookie だけ長い/短いという非対称を作らない。
+        maxAge: SESSION_LIFETIME_SECONDS,
       });
     },
     async readSessionCookie(c) {
