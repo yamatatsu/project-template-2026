@@ -45,10 +45,13 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 1. `pnpm local:up` — Postgres + DynamoDB Local + OIDC mock を起動し、セッションテーブルを作成。
 2. `pnpm db:migrate` — ローカル Postgres に drizzle マイグレーションを適用（初回とスキーマ
    変更時。`packages/db/.env` の `DATABASE_URL` を使う）。
-3. `apps/backend/.env` を用意（`apps/backend/.env.example` をコピー。OIDC/Cookie/DynamoDB の
+3. `pnpm db:seed`（任意）— 動作確認用のデータを投入。member / admin の 2 ユーザー
+   （oidc-server-mock の `member-user` / `admin-user` に対応、admin は `role='admin'`）と
+   タスク 101 件を入れる。何度流しても同じ状態に収束する（tasks は入れ直し、users は upsert）。
+4. `apps/backend/.env` を用意（`apps/backend/.env.example` をコピー。OIDC/Cookie/DynamoDB の
    ローカル既定値入り）。
-4. `pnpm dev` — フロント（:5001）とバック（:3001 = BFF）を並列起動。
-5. http://localhost:5001 へアクセス → 未認証なら OIDC フローが走り、oidc-server-mock の
+5. `pnpm dev` — フロント（:5001）とバック（:3001 = BFF）を並列起動。
+6. http://localhost:5001 へアクセス → 未認証なら OIDC フローが走り、oidc-server-mock の
    ログイン画面へ。事前定義ユーザーでログインすると SPA に戻る（`member` / `member`、または
    `admin` / `admin`。どちらも email 付き）。
 
@@ -59,7 +62,8 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
   登録は `clients.json`。ユーザーやクレームを増やすなら users.json を編集して `pnpm local:up`
   （または oidc-server-mock コンテナ再起動）。
 - **admin を試す**: `admin` / `admin` でログインすると `sub=admin-user`。ただし role は DB 側の責務で、
-  初回アクセス時に JIT で `role='member'` の行が作られる。admin として認可を通すには
+  初回アクセス時に JIT で `role='member'` の行が作られる。`pnpm db:seed` を流していれば admin 行は
+  最初から `role='admin'` で入っている。seed を使わない場合は
   `update users set role='admin' where user_sub='admin-user';` で昇格する（認可の設計は
   [`apps/backend/CLAUDE.md`](apps/backend/CLAUDE.md)「認証・認可」節）。
 

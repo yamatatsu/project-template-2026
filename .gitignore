@@ -22,5 +22,8 @@ yarn-error.log*
 .idea/
 *.local
 
+# claude code（開発者ごとのローカル設定）
+.claude/settings.local.json
+
 # vite
 apps/frontend/dist/

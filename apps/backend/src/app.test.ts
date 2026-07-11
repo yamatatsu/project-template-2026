@@ -24,7 +24,7 @@ const client = testClient(createApp({ auth: loadAuthConfigFromEnv(TEST_ENV) }));
 
 describe('createApp', () => {
   it('保護ルートは未認証だと 401（requireSession が組み込まれていることの smoke test）', async () => {
-    const res = await client.tasks.$get();
+    const res = await client.tasks.$get({ query: {} });
 
     expect(res.status).toBe(401);
   });

@@ -20,6 +20,7 @@
     "local:up": "docker compose up -d --wait",
     "db:generate": "pnpm --filter @icasu/db db:generate",
     "db:migrate": "pnpm --filter @icasu/db db:migrate",
+    "db:seed": "pnpm --filter @icasu/db db:seed",
     "db:push": "pnpm --filter @icasu/db db:push",
     "db:studio": "pnpm --filter @icasu/db db:studio",
     "cdk:synth": "pnpm --filter @icasu/iac run synth",

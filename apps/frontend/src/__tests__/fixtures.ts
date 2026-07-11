@@ -19,6 +19,11 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
   } as Task;
 }
 
+/** GET /tasks のレスポンス形（items + total）のフィクスチャを作る。 */
+export function makeTaskList(items: Task[], total: number = items.length) {
+  return { items, total };
+}
+
 /** Hono RPC の Response 相当の偽オブジェクト（`client.*` の戻り値の形）を作る。 */
 export function rpcResponse<T>(body: T, init: { ok?: boolean; status?: number } = {}) {
   const ok = init.ok ?? true;

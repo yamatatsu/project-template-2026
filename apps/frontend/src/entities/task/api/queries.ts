@@ -1,25 +1,36 @@
-import { queryOptions } from '@tanstack/react-query';
+import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 
 import { client } from '@/shared/api';
+
+/** タスク一覧のページング指定（1 始まりのページ番号と 1 ページの行数）。 */
+export type TaskListParams = {
+  page: number;
+  pageSize: number;
+};
 
 /** task エンティティの query key ファクトリ。 */
 export const taskKeys = {
   all: ['tasks'] as const,
   lists: () => [...taskKeys.all, 'list'] as const,
+  list: (params: TaskListParams) => [...taskKeys.lists(), params] as const,
   detail: (id: string) => [...taskKeys.all, 'detail', id] as const,
 };
 
-/** タスク一覧（createdAt 降順）の query options。 */
-export function taskListQuery() {
+/** タスク一覧（createdAt 降順・サーバサイドページング）の query options。 */
+export function taskListQuery(params: TaskListParams) {
   return queryOptions({
-    queryKey: taskKeys.lists(),
+    queryKey: taskKeys.list(params),
     queryFn: async () => {
-      const res = await client.tasks.$get();
+      const res = await client.tasks.$get({
+        query: { page: String(params.page), pageSize: String(params.pageSize) },
+      });
       if (!res.ok) {
         throw new Error('タスク一覧の取得に失敗しました');
       }
       return res.json();
     },
+    // ページ切替中は直前のページを表示し続け、テーブルがローディング表示に戻るちらつきを防ぐ。
+    placeholderData: keepPreviousData,
   });
 }
 

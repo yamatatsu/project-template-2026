@@ -33,6 +33,22 @@ export const taskIdParamSchema = z.object({
   id: z.uuid(),
 });
 
+// クエリ文字列は常に string で届くので、境界で number までパースする（dueDate の ISO→Date と同じ扱い）。
+// 上限は業務ルールではなく境界の防御: pageSize はレスポンス行数が際限なく膨らむのを、page は
+// 不正に巨大な OFFSET が SQL に流れるのを防ぐ。
+const boundedIntParam = (fallback: number, max: number) =>
+  z
+    .string()
+    .regex(/^\d+$/)
+    .default(String(fallback))
+    .transform(Number)
+    .pipe(z.number().min(1).max(max));
+
+export const taskListQuerySchema = z.object({
+  page: boundedIntParam(1, 100_000),
+  pageSize: boundedIntParam(20, 100),
+});
+
 // ── レスポンス（出力境界・encode）──────────────────────────────────────────────
 // ドメイン Task / drizzle 行を、全 endpoint 共通のワイヤ形へ serializer で整形する。
 
@@ -52,6 +68,13 @@ export type TaskResponse = {
     createdAt: string;
     updatedAt: string;
   };
+};
+
+// 一覧（GET /tasks）のワイヤ形。ページの行だけを返すため、フロントがページ数を出すのに使う
+// 全件数 `total` を同梱する。
+export type TaskListResponse = {
+  items: TaskResponse[];
+  total: number;
 };
 
 /**

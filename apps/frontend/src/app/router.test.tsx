@@ -2,7 +2,7 @@ import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/rea
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import { rpcResponse } from '@/__tests__/fixtures';
+import { makeTaskList, rpcResponse } from '@/__tests__/fixtures';
 
 import { routeTree } from './router';
 
@@ -21,7 +21,7 @@ vi.mock('@/shared/api', () => ({
         ),
     },
     tasks: Object.assign(
-      { $get: () => Promise.resolve(rpcResponse([])), $post: vi.fn() },
+      { $get: () => Promise.resolve(rpcResponse(makeTaskList([]))), $post: vi.fn() },
       { ':id': { $get: vi.fn(), $put: vi.fn(), $delete: vi.fn() } },
     ),
   },

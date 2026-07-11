@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env src/migration/cli.ts",
+    "db:seed": "node --env-file-if-exists=.env src/seed.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },

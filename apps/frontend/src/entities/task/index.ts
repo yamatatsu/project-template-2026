@@ -1,4 +1,4 @@
-export { taskDetailQuery, taskKeys, taskListQuery } from './api/queries';
+export { taskDetailQuery, taskKeys, type TaskListParams, taskListQuery } from './api/queries';
 export {
   type Task,
   type TaskPriority,

@@ -6,8 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 // トップ用の読み取り専用タスク一覧。編集・削除や詳細への導線は持たない（それらは管理画面の責務）。
 // widgets/tasks-table と役割が別（あちらは管理操作込み）なので共有せず、トップの関心に閉じて置く。
+// 概要なので新しい順の先頭ページだけを見せ、ページ送りは持たない（全量は管理画面で）。
 export function TasksOverview() {
-  const { data, isPending, isError, error } = useQuery(taskListQuery());
+  const { data, isPending, isError, error } = useQuery(taskListQuery({ page: 1, pageSize: 20 }));
 
   if (isPending) {
     return (
@@ -25,7 +26,7 @@ export function TasksOverview() {
     );
   }
 
-  if (data.length === 0) {
+  if (data.total === 0) {
     return (
       <p className="text-muted-foreground text-sm" data-testid="tasks-overview-empty">
         タスクがありません。
@@ -44,7 +45,7 @@ export function TasksOverview() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data.map((task) => (
+        {data.items.map((task) => (
           <TableRow key={task.id}>
             <TableCell className="font-medium">{task.title}</TableCell>
             <TableCell>

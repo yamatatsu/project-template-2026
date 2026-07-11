@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { makeTask, rpcResponse } from '@/__tests__/fixtures';
+import { makeTask, makeTaskList, rpcResponse } from '@/__tests__/fixtures';
 import { renderAt } from '@/__tests__/render-route';
 
 const tasksGet = vi.fn();
@@ -36,7 +36,7 @@ afterEach(() => {
 
 describe('TasksPage routing', () => {
   it('navigates to the create form via 新規作成', async () => {
-    tasksGet.mockResolvedValue(rpcResponse([makeTask()]));
+    tasksGet.mockResolvedValue(rpcResponse(makeTaskList([makeTask()])));
     const user = userEvent.setup();
 
     renderAt('/tasks');
