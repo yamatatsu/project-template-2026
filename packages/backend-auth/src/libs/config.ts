@@ -48,6 +48,7 @@ export interface AuthConfig {
  */
 export function loadAuthConfigFromEnv(env: NodeJS.ProcessEnv = process.env): AuthConfig {
   const missing: string[] = [];
+  const invalid: string[] = [];
   const required = (name: string): string => {
     const value = env[name];
     if (value === undefined || value === '') {
@@ -59,6 +60,19 @@ export function loadAuthConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Aut
   const optional = (name: string, fallback: string): string => {
     const value = env[name];
     return value === undefined || value === '' ? fallback : value;
+  };
+  // 'true' / 'false' 以外は黙って fallback にせずエラーにする。緩い解釈（`=== 'true'` だけ）だと
+  // 'TRUE' や '1' の typo が本番で Secure Cookie を静かに無効化する。
+  const optionalBoolean = (name: string, fallback: boolean): boolean => {
+    const value = env[name];
+    if (value === undefined || value === '') {
+      return fallback;
+    }
+    if (value !== 'true' && value !== 'false') {
+      invalid.push(`${name}='${value}' (must be 'true' or 'false')`);
+      return fallback;
+    }
+    return value === 'true';
   };
 
   const config: AuthConfig = {
@@ -76,7 +90,7 @@ export function loadAuthConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Aut
     appBaseUrl: required('APP_BASE_URL'),
     cookie: {
       name: optional('COOKIE_NAME', 'sid'),
-      secure: optional('COOKIE_SECURE', 'true') === 'true',
+      secure: optionalBoolean('COOKIE_SECURE', true),
       secret: required('COOKIE_SECRET'),
     },
     dynamo: {
@@ -86,10 +100,13 @@ export function loadAuthConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Aut
     },
   };
 
-  if (missing.length > 0) {
-    throw new Error(
-      `@icasu/backend-auth: missing required environment variable(s): ${missing.join(', ')}`,
-    );
+  // 不足と不正はどちらも起動時に全件まとめて報告する（1 変数ずつ直させない）。
+  const problems = [
+    missing.length > 0 && `missing required environment variable(s): ${missing.join(', ')}`,
+    invalid.length > 0 && `invalid environment variable(s): ${invalid.join('; ')}`,
+  ].filter(Boolean);
+  if (problems.length > 0) {
+    throw new Error(`@icasu/backend-auth: ${problems.join('; ')}`);
   }
 
   return config;

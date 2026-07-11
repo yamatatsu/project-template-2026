@@ -78,4 +78,13 @@ describe('loadAuthConfigFromEnv', () => {
     const { OIDC_ISSUER: _issuer, COOKIE_SECRET: _secret, ...partial } = ENV;
     expect(() => loadAuthConfigFromEnv(partial)).toThrow(/OIDC_ISSUER.*COOKIE_SECRET/);
   });
+
+  it("parses COOKIE_SECURE='false'", () => {
+    expect(loadAuthConfigFromEnv({ ...ENV, COOKIE_SECURE: 'false' }).cookie.secure).toBe(false);
+  });
+
+  it('rejects a non-boolean COOKIE_SECURE instead of silently disabling Secure', () => {
+    // 'TRUE' や '1' を黙って false に解釈すると、typo が本番の Secure Cookie を静かに無効化する。
+    expect(() => loadAuthConfigFromEnv({ ...ENV, COOKIE_SECURE: 'TRUE' })).toThrow(/COOKIE_SECURE/);
+  });
 });
