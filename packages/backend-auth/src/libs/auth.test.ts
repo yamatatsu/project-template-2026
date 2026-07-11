@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { type AuthConfig, loadAuthConfigFromEnv } from './config.ts';
-import { createOidcClient } from './oidc.ts';
+import { createOidcClient, TokenError } from './oidc.ts';
 import { challengeFromVerifier, generateVerifier } from './pkce.ts';
 
 const ENV: Record<string, string> = {
@@ -62,6 +62,19 @@ describe('buildLogoutUrl', () => {
         'http://localhost:5001',
       )}`,
     );
+  });
+});
+
+describe('TokenError', () => {
+  it('treats only the RFC 6749 `error` member as invalid_grant', () => {
+    expect(new TokenError(400, '{"error":"invalid_grant"}').isInvalidGrant).toBe(true);
+    // error_description に文字列が含まれるだけでは invalid_grant と判定しない
+    // （invalid_grant ならセッション破棄になるため、誤判定は即ログアウトに直結する）。
+    expect(
+      new TokenError(400, '{"error":"invalid_request","error_description":"not invalid_grant"}')
+        .isInvalidGrant,
+    ).toBe(false);
+    expect(new TokenError(503, 'service unavailable').isInvalidGrant).toBe(false);
   });
 });
 

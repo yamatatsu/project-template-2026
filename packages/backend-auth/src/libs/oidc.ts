@@ -24,7 +24,13 @@ export class TokenError extends Error {
   }
 
   get isInvalidGrant(): boolean {
-    return this.body.includes('invalid_grant');
+    // RFC 6749 §5.2: トークンエンドポイントのエラーは JSON ボディの `error` メンバーで運ばれる。
+    // 文字列一致（includes）だと error_description 内の言及だけでも真になるため、パースして判定する。
+    try {
+      return (JSON.parse(this.body) as { error?: unknown }).error === 'invalid_grant';
+    } catch {
+      return false;
+    }
   }
 }
 
