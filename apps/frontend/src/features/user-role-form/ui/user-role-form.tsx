@@ -63,6 +63,8 @@ export function UserRoleForm({ user }: { user: User }) {
     },
   });
 
+  const isPending = updateMutation.isPending;
+
   return (
     <form
       data-testid="user-role-form"
@@ -108,13 +110,13 @@ export function UserRoleForm({ user }: { user: User }) {
       )}
 
       <div className="flex gap-2">
-        <Button type="submit" disabled={updateMutation.isPending} data-testid="user-role-form-submit">
+        <Button type="submit" disabled={isPending} data-testid="user-role-form-submit">
           更新
         </Button>
         <Button
           type="button"
           variant="outline"
-          disabled={updateMutation.isPending}
+          disabled={isPending}
           onClick={() => void navigate({ to: '/users/$userId', params: { userId: user.id } })}
         >
           キャンセル

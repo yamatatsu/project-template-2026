@@ -1,5 +1,4 @@
 import { eq } from 'drizzle-orm';
-import type { InferRequestType } from 'hono/client';
 import { testClient } from 'hono/testing';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -19,8 +18,6 @@ const { users } = await import('@icasu/db/schema');
 beforeAll(() => migrateTestDb(db));
 // role による認可・自己降格ガードを検証するため、viewer の role は各テストで明示的に seed する。
 afterEach(() => db.delete(users));
-
-type UserInput = InferRequestType<(typeof client.users)[':id']['$put']>['json'];
 
 // If-Match の entity-tag（"<version>"）に版を載せる（Hono がヘッダ名を小文字化するのでキーは if-match）。
 const ifMatch = (version: number) => ({ 'if-match': `"${version}"` });

@@ -18,11 +18,26 @@ export default defineConfig([
       'fsd/insignificant-slice': 'off',
     },
   },
+  // users-table も tasks-table と同様に一覧ブロックとして widget 化している（参照元は pages/users のみ）。
+  {
+    files: ['./src/widgets/users-table/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
   // delete-task は一覧（widgets/tasks-table）と詳細（pages/task-detail）の両方から
   // 再利用するユースケース。insignificant-slice のヒューリスティックでは参照数が
   // 過小評価されるため緩和する。
   {
     files: ['./src/features/delete-task/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  // user-role-form はロール変更のユースケース（参照元は pages/user-edit のみ）。
+  // insignificant-slice のヒューリスティックで過小評価されるため緩和する。
+  {
+    files: ['./src/features/user-role-form/**'],
     rules: {
       'fsd/insignificant-slice': 'off',
     },
