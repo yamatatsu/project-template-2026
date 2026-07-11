@@ -6,6 +6,7 @@ import type { User } from './entities/user.ts';
 // 混ぜない。認証（authN）のイベントは `@icasu/backend-auth` が所有する。詳細は `docs/specs/logs.md`。
 export const auditActionValues = [
   'user.provisioned',
+  'user.role_changed',
   'authz.denied',
   'task.created',
   'task.updated',

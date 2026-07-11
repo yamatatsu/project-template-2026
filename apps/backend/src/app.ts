@@ -10,6 +10,9 @@ import taskGet from './routes/tasks.$taskId.get.ts';
 import taskPut from './routes/tasks.$taskId.put.ts';
 import taskList from './routes/tasks.list.ts';
 import taskPost from './routes/tasks.post.ts';
+import userGet from './routes/users.$userId.get.ts';
+import userPut from './routes/users.$userId.put.ts';
+import userList from './routes/users.list.ts';
 
 /** アプリの構築に必要なものすべて。起動時に一度だけ組み立てる。 */
 export interface AppConfig {
@@ -35,7 +38,10 @@ export function createApp(config: AppConfig) {
     .route('/', taskGet)
     .route('/', taskPost)
     .route('/', taskPut)
-    .route('/', taskDelete);
+    .route('/', taskDelete)
+    .route('/', userList)
+    .route('/', userGet)
+    .route('/', userPut);
 
   // requestLogger は最外周に置く。/auth 配下（認証イベントの発生源）まで含めて
   // リクエストスコープと requestId を行き渡らせるため。
