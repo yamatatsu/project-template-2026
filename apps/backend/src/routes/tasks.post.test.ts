@@ -77,6 +77,12 @@ describe('POST /tasks', () => {
     expect(res.status).toBe(400);
   });
 
+  it('rejects an over-long description with 400', async () => {
+    const res = await client.tasks.$post({ json: validBody({ description: 'a'.repeat(2001) }) });
+
+    expect(res.status).toBe(400);
+  });
+
   it('accepts an offset ISO dueDate and returns it as a string', async () => {
     const { res, json } = await createTask(validBody({ dueDate: '2026-07-01T09:30:00+09:00' }));
 

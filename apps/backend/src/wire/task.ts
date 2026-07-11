@@ -16,7 +16,9 @@ const taskPriorityEnum = z.enum(taskPriorityValues);
 
 export const taskInputSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(200),
-  description: z.string().nullable(),
+  // 上限は業務ルールではなく境界の防御（無制限の入力をそのまま DB に入れない）。title と同じく
+  // 門番（wire）の関心なのでここに置き、ドメインには持ち込まない。
+  description: z.string().max(2000).nullable(),
   status: taskStatusEnum,
   priority: taskPriorityEnum,
   // 境界でワイヤの ISO 文字列をドメインの Date にパースする（"parse, don't validate"）。
