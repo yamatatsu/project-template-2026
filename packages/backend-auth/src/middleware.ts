@@ -52,6 +52,9 @@ export function createRequireSession(deps: RequireSessionDeps): RequireSession {
     auditAuth('auth.session.invalidated', { outcome: 'failure', reason, actor: { userSub } });
   }
 
+  // 並行リクエストが同時に失効窓を踏むと両方がここへ入る。RT をローテーションするプロバイダでは
+  // 後着が invalid_grant → セッション破棄になりうる既知の制約（Cognito は既定でローテーションせず
+  // 顕在化しない。対策の選択肢は bff-auth skill の gotchas §14）。
   async function tryRefresh(
     c: Context<AuthEnv>,
     sessionId: string,
