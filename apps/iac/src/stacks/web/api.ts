@@ -57,7 +57,7 @@ export class Api extends Construct {
     this.apiFn = new NodejsFunction(this, 'ApiFn', {
       entry: LAMBDA_ENTRY,
       handler: 'handler',
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       architecture: Architecture.ARM_64,
       memorySize: 512,
       timeout: Duration.seconds(30),
@@ -72,7 +72,7 @@ export class Api extends Construct {
       },
       bundling: {
         format: OutputFormat.CJS,
-        target: 'node22',
+        target: 'node24',
         sourceMap: true,
         // pg はオプショナルなネイティブバインディングを遅延 require するため external に残す。
         externalModules: ['pg-native'],

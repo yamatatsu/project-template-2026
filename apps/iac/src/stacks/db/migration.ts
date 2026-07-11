@@ -36,7 +36,7 @@ export class Migration extends Construct {
     const migrateFn = new NodejsFunction(this, 'MigrateFn', {
       entry: MIGRATE_ENTRY,
       handler: 'handler',
-      runtime: Runtime.NODEJS_22_X,
+      runtime: Runtime.NODEJS_24_X,
       architecture: Architecture.ARM_64,
       memorySize: 256,
       timeout: Duration.minutes(5),
@@ -49,7 +49,7 @@ export class Migration extends Construct {
       bundling: {
         // folder.ts が import.meta.url で SQL フォルダを解決するため ESM で出力する。
         format: OutputFormat.ESM,
-        target: 'node22',
+        target: 'node24',
         sourceMap: true,
         // pg はオプショナルなネイティブバインディングを遅延 require するため external に残す。
         externalModules: ['pg-native'],
