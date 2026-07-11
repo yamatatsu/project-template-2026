@@ -1,7 +1,6 @@
 import { type AuthConfig, createAuth } from '@icasu/backend-auth';
 import { getLogger } from '@icasu/logger';
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 
 import { requestLogger } from './middleware/request-logger.ts';
@@ -40,9 +39,12 @@ export function createApp(config: AppConfig) {
 
   // requestLogger は最外周に置く。/auth 配下（認証イベントの発生源）まで含めて
   // リクエストスコープと requestId を行き渡らせるため。
+  //
+  // CORS ミドルウェアは置かない。SPA と BFF は常に同一オリジンで配信される（dev は Vite プロキシ、
+  // 本番は CloudFront が /api を同居させる）ため CORS 自体が発生しない。クロスオリジン配信に変える
+  // 場合は、Cookie 認証なので origin の明示 + credentials 対応が必須（ワイルドカードは不可）。
   return new Hono()
     .use('*', requestLogger())
-    .use('*', cors())
     .route('/auth', auth.navRoute)
     .route('/', applicationRoutes)
     .onError((err, c) => {
