@@ -91,7 +91,7 @@ drizzle/DB 層まで越境して bundle に漏れる）。
   type CreateTaskInput = InferRequestType<typeof client.tasks.$post>['json'];
   ```
 
-- **クライアント側のフォーム検証は、各フォームが自前の検証スキーマを持つ**（案B）。backend の
+- **クライアント側のフォーム検証は、各フォームが自前の検証スキーマを持つ**。backend の
   検証スキーマを共有・import しない。理由: サーバ検証（信頼できない入力の門番）とフォーム検証
   （送信前の即時 UX）は目的が別で、`datetime-local` 変換・空文字→null・`defaultValues` など
   フォーム固有の関心はどのみちフロントにしか無い。ペイロード形状のサーバ一致は上記 RPC 型が担保し、

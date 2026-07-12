@@ -4,7 +4,9 @@
 
 ## 概要
 
-pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `apps/frontend`（React + Vite + Tailwind v4 + shadcn/ui）。Hono RPC + TanStack Query でエンドツーエンド型安全。Lint/format は oxlint + oxfmt、テストは Vitest。
+pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）・`apps/frontend`（React + Vite +
+Tailwind v4 + shadcn/ui）・`apps/iac`（AWS CDK）と、それらが共有する `packages/*`（下表）。
+Hono RPC + TanStack Query でエンドツーエンド型安全。Lint/format は oxlint + oxfmt、テストは Vitest。
 
 ## モノレポ構成
 
@@ -67,8 +69,9 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
   `update users set role='admin' where user_sub='admin-user';` で昇格する（認可の設計は
   [`apps/backend/CLAUDE.md`](apps/backend/CLAUDE.md)「認証・認可」節）。
 
-認証（OAuth BFF パターン）の仕組み・設計・本番 Cognito との切り替えは
-[`packages/backend-auth/CLAUDE.md`](packages/backend-auth/CLAUDE.md) を参照。
+認証（OAuth BFF パターン）の全体像・OIDC フロー・本番 Cognito との切り替えは
+[`docs/specs/authentication.md`](docs/specs/authentication.md)。実装の作業ルールは
+[`packages/backend-auth/CLAUDE.md`](packages/backend-auth/CLAUDE.md)。
 
 ## ドキュメントの言語
 
@@ -106,11 +109,27 @@ pnpm workspaces のモノレポ。`apps/backend`（Hono on Node.js v24）と `ap
 
 ## ドキュメントの置き場所
 
-- **プロジェクト全体に効くルール**（モノレポ構成・共通コマンド・ローカル開発・コミット/ツール
-  導入の方針など）はこのルート `CLAUDE.md` に書く。
-- **特定のローカルパッケージにしか効かないルール**は、そのパッケージ直下の `CLAUDE.md` に書く
-  （そのディレクトリ内で作業すると自動で読み込まれる）。ルート `CLAUDE.md` にはパッケージ固有の
-  詳細を持ち込まず、必要ならリンクで参照する。
+書きたい内容の性質で置き場所を決める（`CLAUDE.md` は毎セッション全文がコンテキストに載るので、
+何でもここに足すと肥大化して指示が効かなくなる。1 ファイル **200 行未満**を目安にする）。
+
+| 内容                                                           | 置き場所                                                      |
+| -------------------------------------------------------------- | ------------------------------------------------------------- |
+| プロジェクト全体の恒久ルール（構成・共通コマンド・コミット等） | ルート `CLAUDE.md`                                            |
+| 特定パッケージにしか効かないルール                             | そのパッケージ直下の `CLAUDE.md`（下表）                      |
+| 特定のファイル型・パスでだけ効かせたいルール                   | `.claude/rules/*.md`（`paths:` frontmatter でスコープ）       |
+| 手順的で、必要なときだけ読めばよいもの                         | `.claude/skills/<name>/`（常時ロードしない）                  |
+| 設計の根拠・仕様の全体像（長文）                               | `docs/specs/*.md`（`CLAUDE.md` からリンクし、両方に書かない） |
+
+ルート `CLAUDE.md` にパッケージ固有の詳細を持ち込まず、リンクで参照する。新しいパッケージに
+`CLAUDE.md` を足したら下のリンク一覧にも追記する。書き方の指針は
+[`.claude/skills/claude-md-memory/`](.claude/skills/claude-md-memory/)。
+
+現行の `.claude/rules/`: [`result-type.md`](.claude/rules/result-type.md)（失敗は throw せず
+`@icasu/simple-result` の `Result` で返す。全 `.ts`/`.tsx` に適用）。
+
+`docs/specs/`: [`authentication.md`](docs/specs/authentication.md)（認証の全体像）・
+[`logs.md`](docs/specs/logs.md)（ログ／監査ログ設計の根拠）・
+[`optimistic-lock.md`](docs/specs/optimistic-lock.md)（楽観ロックの設計）。
 
 パッケージ別 `CLAUDE.md`:
 
