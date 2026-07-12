@@ -5,9 +5,19 @@ on:
     branches: [main]
   pull_request:
 
+# GITHUB_TOKEN はデフォルトで広い権限を持つ。CI は checkout して検査するだけなので読み取りに絞る。
+permissions:
+  contents: read
+
+# 同一 PR/ブランチで push を重ねたら古い run はキャンセルする（main の push 同士は直列に残す）。
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -17,7 +27,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          # Node バージョンは .node-version を単一の source of truth にする（mise / ローカルと揃える）。
+          # pnpm は action-setup が package.json の packageManager から解決する。
+          node-version-file: .node-version
           cache: pnpm
 
       - name: Install dependencies
@@ -37,3 +49,7 @@ jobs:
 
       - name: Test
         run: pnpm run test
+
+      # vite build / esbuild / Tailwind 固有の失敗は tsc --noEmit では拾えないので build も回す。
+      - name: Build
+        run: pnpm run build
