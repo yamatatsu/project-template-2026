@@ -29,9 +29,6 @@ export function taskListQuery(params: TaskListParams) {
       }
       return res.json();
     },
-    // placeholderData は使わない。直前ページを表示し続けると、次ページ取得が終わるまで
-    // 画面が変わらず「ボタンを押しても反応がない」ラグに見えるため。未キャッシュのページは
-    // data=undefined → isPending=true となり、リスト全体がローディング表示に切り替わる。
   });
 }
 
