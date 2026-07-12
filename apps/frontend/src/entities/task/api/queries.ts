@@ -1,4 +1,4 @@
-import { keepPreviousData, queryOptions } from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 
 import { client } from '@/shared/api';
 
@@ -29,8 +29,6 @@ export function taskListQuery(params: TaskListParams) {
       }
       return res.json();
     },
-    // ページ切替中は直前のページを表示し続け、テーブルがローディング表示に戻るちらつきを防ぐ。
-    placeholderData: keepPreviousData,
   });
 }
 
