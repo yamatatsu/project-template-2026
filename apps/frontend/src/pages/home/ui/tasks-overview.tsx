@@ -1,14 +1,47 @@
 import { useQuery } from '@tanstack/react-query';
+import type { ColumnDef, PaginationState } from '@tanstack/react-table';
+import { useState } from 'react';
 
-import { TaskPriorityBadge, TaskStatusBadge, taskListQuery } from '@/entities/task';
+import { type Task, TaskPriorityBadge, TaskStatusBadge, taskListQuery } from '@/entities/task';
 import { formatDateTime } from '@/shared/lib/utils';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table';
+import { DataTable } from '@/shared/ui/data-table';
 
-// トップ用の読み取り専用タスク一覧。編集・削除や詳細への導線は持たない（それらは管理画面の責務）。
-// widgets/tasks-table と役割が別（あちらは管理操作込み）なので共有せず、トップの関心に閉じて置く。
-// 概要なので新しい順の先頭ページだけを見せ、ページ送りは持たない（全量は管理画面で）。
+const DEFAULT_PAGE_SIZE = 20;
+
+// トップ用の読み取り専用の列。編集・削除や詳細への導線は持たない（それらは管理画面の責務）。
+// widgets/tasks-table と役割が別（あちらは管理操作込み）なので列は共有せず、トップの関心に閉じて置く。
+const columns: ColumnDef<Task>[] = [
+  {
+    accessorKey: 'title',
+    header: 'タイトル',
+    cell: ({ row }) => <span className="font-medium">{row.original.title}</span>,
+  },
+  {
+    accessorKey: 'status',
+    header: 'ステータス',
+    cell: ({ row }) => <TaskStatusBadge status={row.original.status} />,
+  },
+  {
+    accessorKey: 'priority',
+    header: '優先度',
+    cell: ({ row }) => <TaskPriorityBadge priority={row.original.priority} />,
+  },
+  {
+    accessorKey: 'dueDate',
+    header: '期限',
+    cell: ({ row }) => formatDateTime(row.original.dueDate),
+  },
+];
+
 export function TasksOverview() {
-  const { data, isPending, isError, error } = useQuery(taskListQuery({ page: 1, pageSize: 20 }));
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const { data, isPending, isError, error } = useQuery(
+    // pagination（0 始まり）をワイヤの page（1 始まり）に読み替える。
+    taskListQuery({ page: pagination.pageIndex + 1, pageSize: pagination.pageSize }),
+  );
 
   if (isPending) {
     return (
@@ -35,29 +68,13 @@ export function TasksOverview() {
   }
 
   return (
-    <Table data-testid="tasks-overview">
-      <TableHeader>
-        <TableRow>
-          <TableHead>タイトル</TableHead>
-          <TableHead>ステータス</TableHead>
-          <TableHead>優先度</TableHead>
-          <TableHead>期限</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {data.items.map((task) => (
-          <TableRow key={task.id}>
-            <TableCell className="font-medium">{task.title}</TableCell>
-            <TableCell>
-              <TaskStatusBadge status={task.status} />
-            </TableCell>
-            <TableCell>
-              <TaskPriorityBadge priority={task.priority} />
-            </TableCell>
-            <TableCell>{formatDateTime(task.dueDate)}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <DataTable
+      columns={columns}
+      data={data.items}
+      rowCount={data.total}
+      pagination={pagination}
+      onPaginationChange={setPagination}
+      data-testid="tasks-overview"
+    />
   );
 }

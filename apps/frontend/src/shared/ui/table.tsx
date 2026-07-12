@@ -2,6 +2,16 @@ import * as React from 'react';
 
 import { cn } from '@/shared/lib/utils';
 
+/**
+ * `<table>` の見た目だけを整える低レベルなプリミティブ群（`TableHeader`/`TableBody`/`TableRow` …）。
+ *
+ * 推奨利用シーン: 行数が固定的で手書きする静的な表・レイアウト目的の表、または `DataTable` のような
+ * 上位コンポーネントを組み立てるための土台。
+ *
+ * 非推奨: **データ配列を行に展開して見せる「データテーブル」には使わない**。ページネーション・
+ * ソート・列定義の共通化が伴うため、代わりに {@link DataTable}（`@/shared/ui/data-table`）を使う。
+ * ここを直接 map して一覧を組むと、それらの共通実装が各所で二重化する。
+ */
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (
     <div data-slot="table-container" className="relative w-full overflow-x-auto">
