@@ -91,14 +91,29 @@ beforeEach(() => {
 function cookieFrom(res: Response): string {
   const setCookie = res.headers.get('set-cookie');
   if (!setCookie) throw new Error('expected a Set-Cookie header');
-  return setCookie.split(';')[0]!;
+  const [pair] = setCookie.split(';');
+  if (pair === undefined) throw new Error('expected a cookie name=value pair');
+  return pair;
+}
+
+/** レスポンスの Location ヘッダを URL として取り出す。 */
+function locationFrom(res: Response): URL {
+  const location = res.headers.get('location');
+  if (!location) throw new Error('expected a Location header');
+  return new URL(location);
+}
+
+/** authorize リダイレクトの URL から `state` を取り出す。 */
+function stateFrom(res: Response): string {
+  const state = locationFrom(res).searchParams.get('state');
+  if (!state) throw new Error('expected a state param');
+  return state;
 }
 
 /** /login を開始し、authorize リダイレクトに紐付いた `state` を返す。 */
 async function startLogin(returnTo = '/'): Promise<string> {
   const res = await authRoute.request(`/login?returnTo=${encodeURIComponent(returnTo)}`);
-  const location = new URL(res.headers.get('location')!);
-  return location.searchParams.get('state')!;
+  return stateFrom(res);
 }
 
 /** ログインフローを完了し、署名付きセッション Cookie を返す。 */
@@ -130,7 +145,7 @@ describe('GET /login', () => {
     const res = await authRoute.request('/login?returnTo=%2Fdashboard');
 
     expect(res.status).toBe(302);
-    const url = new URL(res.headers.get('location')!);
+    const url = locationFrom(res);
     expect(`${url.origin}${url.pathname}`).toBe('http://localhost:8080/default/authorize');
     expect(url.searchParams.get('response_type')).toBe('code');
     expect(url.searchParams.get('code_challenge_method')).toBe('S256');
@@ -273,7 +288,7 @@ describe('GET /logout', () => {
 
     const state = await (async () => {
       const res = await route.request('/login');
-      return new URL(res.headers.get('location')!).searchParams.get('state')!;
+      return stateFrom(res);
     })();
     exchangeCode.mockResolvedValue({
       accessToken: 'access-token',

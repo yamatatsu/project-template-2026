@@ -1,6 +1,6 @@
 import type { InferResponseType } from 'hono/client';
 
-import { client } from '@/shared/api';
+import type { client } from '@/shared/api';
 
 /**
  * Hono RPC のレスポンス（一覧エンドポイントの 200 の `items` 要素）から導出した Task エンティティ型。

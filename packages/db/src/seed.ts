@@ -81,6 +81,14 @@ async function replaceTasks(creatorIds: string[]): Promise<void> {
   await db.insert(tasks).values(buildTasks(creatorIds));
 }
 
+// index からの循環選択。modulo で常に範囲内だが noUncheckedIndexedAccess 下では undefined 型が
+// 残るため、空配列だけを弾いて要素型に絞る。
+function cycle<T>(values: readonly T[], index: number): T {
+  const value = values[index % values.length];
+  if (value === undefined) throw new Error('cycle: values must not be empty');
+  return value;
+}
+
 /**
  * 確認用に status / priority / dueDate / description をばらけさせた 101 件を組み立てる。
  * 乱数は使わず index から決定的に作る（再実行で内容が変わらないようにするため）。
@@ -97,12 +105,12 @@ function buildTasks(creatorIds: string[]): NewTask[] {
       // 3 件に 1 件は description なし（null 可の列を両方の状態で確認できるように）。
       description:
         index % 3 === 0 ? null : `動作確認用のサンプルタスク（${number} 件目）の説明文。`,
-      status: taskStatusValues[index % taskStatusValues.length]!,
+      status: cycle(taskStatusValues, index),
       // priority は status と位相をずらして組み合わせを散らす。
-      priority: taskPriorityValues[(index + 1) % taskPriorityValues.length]!,
+      priority: cycle(taskPriorityValues, index + 1),
       // 4 件に 1 件は期限なし。残りは今日を起点に前後へばらけさせる。
       dueDate: index % 4 === 0 ? null : new Date(now.getTime() + (index - 20) * dayMs),
-      createdBy: creatorIds[index % creatorIds.length]!,
+      createdBy: cycle(creatorIds, index),
       version: 1,
       createdAt: now,
       updatedAt: now,

@@ -12,7 +12,15 @@
   },
   "rules": {
     "react/react-in-jsx-scope": "off",
-    "import/no-unassigned-import": "off"
+    "import/no-unassigned-import": "off",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/consistent-type-imports": ["error", { "disallowTypeAnnotations": false }],
+    "typescript/ban-ts-comment": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-unsafe-declaration-merging": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/prefer-as-const": "error"
   },
   "ignorePatterns": [
     "dist",

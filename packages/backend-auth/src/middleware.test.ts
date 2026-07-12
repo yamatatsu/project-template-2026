@@ -140,7 +140,9 @@ describe('when the access token is within the refresh margin', () => {
       }),
     );
     // リフレッシュ後のアクセストークンは今からおよそ1時間有効。
-    const saved = store.saveSession.mock.calls[0]![1] as SessionData;
+    const [firstCall] = store.saveSession.mock.calls;
+    if (firstCall === undefined) throw new Error('expected saveSession to have been called');
+    const saved = firstCall[1] as SessionData;
     expect(saved.accessTokenExpiresAt).toBeGreaterThan(nowSeconds() + 3000);
   });
 
