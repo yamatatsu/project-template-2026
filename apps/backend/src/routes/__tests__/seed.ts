@@ -1,4 +1,4 @@
-import type { NewTask, Task } from '@icasu/db/schema';
+import type { NewTask, NewUser, Task, User } from '@icasu/db/schema';
 
 import { newRowColumns } from '../../__tests__/support.ts';
 
@@ -33,6 +33,27 @@ export async function seedTask(
     .returning();
   if (!row) {
     throw new Error('failed to seed task');
+  }
+  return row;
+}
+
+/**
+ * user を 1 行 seed して返す（users ルートのテスト専用）。role による認可・自己降格ガードの検証で任意の
+ * userSub / role / createdAt の行が要るため、`seedSessionUser`（session ユーザー用の void 版）とは別に、
+ * id を含む行を返すこの版を用意する。`.returning()` の先頭は `User | undefined` なので存在を保証して返す。
+ */
+export async function seedUser(
+  db: Db,
+  values: Partial<NewUser> & { userSub: string; role: 'member' | 'admin' },
+): Promise<User> {
+  const { users } = await import('@icasu/db/schema');
+  // id / version / タイムスタンプは newRowColumns() で付与する（呼び出し側で上書き可）。
+  const [row] = await db
+    .insert(users)
+    .values({ ...newRowColumns(), ...values })
+    .returning();
+  if (!row) {
+    throw new Error('failed to seed user');
   }
   return row;
 }

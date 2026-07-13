@@ -1,11 +1,16 @@
 import { db } from '@icasu/db/client';
 import { users } from '@icasu/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import type { User } from '../entities/user.ts';
 
 export async function findUserBySub(userSub: string): Promise<User | null> {
   const [row] = await db.select().from(users).where(eq(users.userSub, userSub));
+  return row ? toUser(row) : null;
+}
+
+export async function findUser(id: string): Promise<User | null> {
+  const [row] = await db.select().from(users).where(eq(users.id, id));
   return row ? toUser(row) : null;
 }
 
@@ -26,6 +31,25 @@ export async function addUser(user: User): Promise<void> {
       updatedAt: meta.updatedAt,
     })
     .onConflictDoNothing();
+}
+
+/**
+ * 次の状態を永続化する。楽観ロックは `WHERE version = expectedVersion` の CAS で掛ける（load→save の間に
+ * 別の書き手が版を進める窓を塞ぐ原子バックストップ。負けたら null）。`version` はドメインが決めた絶対値を
+ * そのまま書き戻す（DB 側で +1 しない）。可変なのは role のみ（userSub は identity で変えない）。
+ */
+export async function saveUser(user: User, expectedVersion: number): Promise<User | null> {
+  const { id, role, meta } = user;
+  const [saved] = await db
+    .update(users)
+    .set({
+      role,
+      updatedAt: meta.updatedAt,
+      version: meta.version,
+    })
+    .where(and(eq(users.id, id), eq(users.version, expectedVersion)))
+    .returning();
+  return saved ? toUser(saved) : null;
 }
 
 /** DB 行（フラット）をドメインの User に写す。監査系の列は meta にまとめる（toTask と同じ規約）。 */

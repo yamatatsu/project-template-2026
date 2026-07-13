@@ -30,7 +30,7 @@ describe('GET /me', () => {
     });
   });
 
-  it('returns task:write in permissions for an admin', async () => {
+  it('returns the write and user-management permissions for an admin', async () => {
     const session = testSession({ userSub: 'admin-sub', email: undefined });
     await seedSessionUser(db, 'admin', session);
     const client = testClient(withSession(meRoute, session));
@@ -41,7 +41,7 @@ describe('GET /me', () => {
     expect(await res.json()).toEqual({
       userSub: 'admin-sub',
       email: undefined,
-      permissions: ['task:read', 'task:write'],
+      permissions: ['task:read', 'task:write', 'user:read', 'user:write'],
     });
   });
 });
