@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // hook は tsc を通さず node が直接実行する素の .mjs なので、型は
+    // エディタでの検査だけのために付ける（`pnpm typecheck` の対象外）。
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": ["*.mjs"]
+}
