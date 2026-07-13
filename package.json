@@ -38,7 +38,7 @@
     "typescript": "7.0.2"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
+    "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}": [
       "oxfmt --no-error-on-unmatched-pattern",
       "oxlint --fix --no-error-on-unmatched-pattern"
     ],
