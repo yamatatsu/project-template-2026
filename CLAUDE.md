@@ -121,8 +121,12 @@ Hono RPC + TanStack Query でエンドツーエンド型安全。Lint/format は
 | 設計の根拠・仕様の全体像（長文）                               | `docs/specs/*.md`（`CLAUDE.md` からリンクし、両方に書かない） |
 
 ルート `CLAUDE.md` にパッケージ固有の詳細を持ち込まず、リンクで参照する。新しいパッケージに
-`CLAUDE.md` を足したら下のリンク一覧にも追記する。書き方の指針は
-[`.claude/skills/claude-md-memory/`](.claude/skills/claude-md-memory/)。
+`CLAUDE.md` を足したら下のリンク一覧にも追記する。
+
+`CLAUDE.md` / `.claude/rules/` / auto memory を書く・直す・削るときは、先に `claude-md-memory`
+skill（[`.claude/skills/claude-md-memory/`](.claude/skills/claude-md-memory/)）を読むこと。何を書き
+何を書かないか、どのスコープに置くか、`CLAUDE.md` ではなく hook / `permissions.deny` に移すべきかの
+判断基準がある。
 
 現行の `.claude/rules/`: [`result-type.md`](.claude/rules/result-type.md)（失敗は throw せず
 `@icasu/simple-result` の `Result` で返す。全 `.ts`/`.tsx` に適用）。
