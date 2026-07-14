@@ -3,68 +3,57 @@ import { tasks } from '@icasu/db/schema';
 import { and, eq } from 'drizzle-orm';
 
 import type { Task } from '../entities/task.ts';
+import { INITIAL_VERSION, type Persisted, toPersisted } from './persisted.ts';
 
-export async function findTask(id: string): Promise<Task | null> {
+export async function findTask(id: string): Promise<Persisted<Task> | null> {
   const [existing] = await db.select().from(tasks).where(eq(tasks.id, id));
-  return existing ? toTask(existing) : null;
+  return existing ? toPersisted(existing) : null;
 }
 
-/** 新規 Task を追加する。id・version・監査列はドメインが決めた値をそのまま書く。 */
-export async function addTask(task: Task): Promise<Task> {
-  const { id, title, description, status, priority, dueDate, createdBy, meta } = task;
+/** 新規 Task を追加する。記録メタデータ（版の起点・タイムスタンプ）はここで打つ。 */
+export async function addTask(task: Task): Promise<Persisted<Task>> {
+  const now = new Date();
   const [created] = await db
     .insert(tasks)
     .values({
-      id,
-      title,
-      description,
-      status,
-      priority,
-      dueDate,
-      createdBy,
-      version: meta.version,
-      createdAt: meta.createdAt,
-      updatedAt: meta.updatedAt,
+      ...task,
+      version: INITIAL_VERSION,
+      createdAt: now,
+      updatedAt: now,
     })
     .returning();
   // insert が行を返さないのは不変条件違反（到達しない）。回復させず throw。
   if (!created) {
-    throw new Error(`failed to insert task: ${id}`);
+    throw new Error(`failed to insert task: ${task.id}`);
   }
-  return toTask(created);
+  return toPersisted(created);
 }
 
 /**
- * 次の状態を永続化する。楽観ロックは `WHERE version = expectedVersion` の CAS で掛ける —— load→save の
- * 間に別の書き手が版を進める窓を塞ぐ原子バックストップ（負けたら null）。`version` はドメインが決めた
- * 絶対値をそのまま書き戻す（DB 側で +1 しない）。
+ * 次の状態を永続化する。楽観ロックは `WHERE version = expectedVersion` の CAS で掛ける —— クライアントが
+ * 土台にした版と DB の現在版の一致を判定する唯一の点（負けたら null）。版は CAS を通った書き込みだけが
+ * `+1` 進める。
  */
-export async function saveTask(task: Task, expectedVersion: number): Promise<Task | null> {
-  const { id, title, description, status, priority, dueDate, meta } = task;
+export async function saveTask(
+  task: Task,
+  expectedVersion: number,
+): Promise<Persisted<Task> | null> {
+  // createdBy（作成者）は不変なので書き戻さない（万一上流で書き換わっていても永続化させない）。
+  const { id, createdBy: _createdBy, ...fields } = task;
   const [saved] = await db
     .update(tasks)
     .set({
-      title,
-      description,
-      status,
-      priority,
-      dueDate,
-      updatedAt: meta.updatedAt,
-      version: meta.version,
+      ...fields,
+      updatedAt: new Date(),
+      version: expectedVersion + 1,
     })
     .where(and(eq(tasks.id, id), eq(tasks.version, expectedVersion)))
     .returning();
-  return saved ? toTask(saved) : null;
+  return saved ? toPersisted(saved) : null;
 }
 
 /** task を 1 件取り除く。取り除けたら true、無ければ false（ルートが 404 に対応づける）。 */
 export async function removeTask(id: string): Promise<boolean> {
   const [removed] = await db.delete(tasks).where(eq(tasks.id, id)).returning();
   return removed != null;
-}
-
-/** DB 行（フラット）をドメインの Task に写す。監査系の列は meta にまとめる。 */
-function toTask(row: typeof tasks.$inferSelect): Task {
-  const { createdAt, updatedAt, version, ...rest } = row;
-  return { ...rest, meta: { version, createdAt, updatedAt } };
 }

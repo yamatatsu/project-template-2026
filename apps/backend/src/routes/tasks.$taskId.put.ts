@@ -14,9 +14,8 @@ export default new Hono().put(
   zValidator('json', conditionalTaskInputSchema),
   async (c) => {
     const { id } = c.req.valid('param');
-    // ワイヤはフラット、ドメインの Command は「意図（updates）と前提（expectedVersion）」に分かれる。
+    // ワイヤはフラット、ドメインは「意図（updates）」と「前提（expectedVersion）」を分けて受ける。
     const { expectedVersion, ...updates } = c.req.valid('json');
-    const now = new Date();
 
     // 競合は稀なので、クライアントは 409 を受けたら対象 entity を再取得して再送信する（現在版は返さず
     // entity 種別と id のみ）。
@@ -27,14 +26,10 @@ export default new Hono().put(
       return c.json({ error: 'Task not found' }, 404);
     }
 
-    // load → applyUpdate（ドメインで次状態を決定・版チェック）→ save の3段。
-    const next = applyUpdate(existing, { updates, expectedVersion }, { now });
-    if (!next.ok) {
-      return conflict();
-    }
-
-    // load→save の窓で別の書き手が割り込んだ場合の原子バックストップ。基底版は逆算させず明示的に渡す。
-    const saved = await saveTask(next.value, expectedVersion);
+    // load → applyUpdate（ドメインで次状態を決定）→ save の3段。版の一致判定は saveTask の CAS が
+    // 一手に担う（ドメインは版を知らない。詳細は docs/specs/optimistic-lock.md）。
+    const next = applyUpdate(existing.value, updates);
+    const saved = await saveTask(next, expectedVersion);
     if (!saved) {
       return conflict();
     }
@@ -43,10 +38,10 @@ export default new Hono().put(
     audit(c, 'task.updated', {
       target: { type: 'task', id },
       detail: {
-        fromVersion: existing.meta.version,
-        toVersion: saved.meta.version,
-        fromStatus: existing.status,
-        toStatus: saved.status,
+        fromVersion: existing.version,
+        toVersion: saved.version,
+        fromStatus: existing.value.status,
+        toStatus: saved.value.status,
       },
     });
     return c.json(toTaskResponse(saved));

@@ -50,7 +50,7 @@ async function resolveUser(userSub: string): Promise<User> {
     return existing;
   }
 
-  await addUser(createUser({ userSub }, { id: randomUUID(), now: new Date() }));
+  await addUser(createUser({ userSub }, { id: randomUUID() }));
   const provisioned = await findUserBySub(userSub);
   // 直前に確保済みなので到達しない。不変条件違反として throw（回復させない）。
   if (!provisioned) {

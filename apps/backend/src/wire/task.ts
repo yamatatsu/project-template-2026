@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import type { Task, TaskPriority, TaskStatus } from '../entities/task.ts';
 import { taskPriorityValues, taskStatusValues } from '../entities/task.ts';
+import type { Persisted } from '../repositories/persisted.ts';
 
 // task がワイヤを越える形（入力＝request / 出力＝response）を 1 feature 1 ファイルにまとめる。設計方針は
 // apps/backend/CLAUDE.md「入力検証と値の所有」「読み取り系の方針」を参照。
@@ -83,10 +84,17 @@ export type TaskListResponse = {
 };
 
 /**
- * write 側（POST/PUT）: ドメイン `Task` をワイヤ形へエンコードする。`Date → ISO 文字列` の変換をここで
- * 明示し（Hono 任せにせず `TaskResponse` を実ワイヤ形と一致させ型を正直に保つため）、返り値型を固定する。
+ * write 側（POST/PUT）: 永続化済み Task をワイヤ形へエンコードする。レスポンスの `meta` は記録メタデータ
+ * そのものなので、repo が返す `Persisted<Task>`（値と記録の対）を丸ごと受ける。`Date → ISO 文字列` の
+ * 変換をここで明示し（Hono 任せにせず `TaskResponse` を実ワイヤ形と一致させ型を正直に保つため）、
+ * 返り値型を固定する。
  */
-export function toTaskResponse(task: Task): TaskResponse {
+export function toTaskResponse({
+  value: task,
+  version,
+  createdAt,
+  updatedAt,
+}: Persisted<Task>): TaskResponse {
   return {
     id: task.id,
     title: task.title,
@@ -96,9 +104,9 @@ export function toTaskResponse(task: Task): TaskResponse {
     dueDate: encodeDate(task.dueDate),
     createdBy: task.createdBy,
     meta: {
-      version: task.meta.version,
-      createdAt: task.meta.createdAt.toISOString(),
-      updatedAt: task.meta.updatedAt.toISOString(),
+      version,
+      createdAt: createdAt.toISOString(),
+      updatedAt: updatedAt.toISOString(),
     },
   };
 }

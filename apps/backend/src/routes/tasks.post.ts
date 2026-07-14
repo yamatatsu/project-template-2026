@@ -16,14 +16,11 @@ export default new Hono().post(
   async (c) => {
     const input = c.req.valid('json');
 
-    // create（ドメインで新規状態を決定）→ insert（永続化）の 2 段。id・now は意図ではなく実行時
+    // create（ドメインで新規状態を決定）→ insert（永続化）の 2 段。id は意図ではなく実行時
     // コンテキストとして注入し、作成者は authZ が解決した User から採る（クライアントに詐称させない）。
-    const task = createTask(
-      { ...input, createdBy: c.get('user').id },
-      { id: randomUUID(), now: new Date() },
-    );
+    const task = createTask({ ...input, createdBy: c.get('user').id }, { id: randomUUID() });
     const created = await addTask(task);
-    audit(c, 'task.created', { target: { type: 'task', id: created.id } });
+    audit(c, 'task.created', { target: { type: 'task', id: created.value.id } });
     return c.json(toTaskResponse(created), 201);
   },
 );
