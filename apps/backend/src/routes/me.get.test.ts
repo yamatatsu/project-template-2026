@@ -9,10 +9,10 @@ vi.mock('@icasu/db/client', () =>
 
 const meRoute = (await import('./me.get.ts')).default;
 const { db } = await import('@icasu/db/client');
-const { users } = await import('@icasu/db/schema');
+const { usersTable } = await import('@icasu/db/schema');
 
 beforeAll(() => migrateTestDb(db));
-afterEach(() => db.delete(users));
+afterEach(() => db.delete(usersTable));
 
 describe('GET /me', () => {
   it('returns the identity and member permissions for a JIT-provisioned user', async () => {

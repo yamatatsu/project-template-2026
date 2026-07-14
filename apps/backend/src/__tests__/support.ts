@@ -55,8 +55,8 @@ export async function seedSessionUser(
   role: 'member' | 'admin',
   session: SessionContext = testSession(),
 ): Promise<void> {
-  const { users } = await import('@icasu/db/schema');
-  await db.insert(users).values({ ...newRowColumns(), userSub: session.userSub, role });
+  const { usersTable } = await import('@icasu/db/schema');
+  await db.insert(usersTable).values({ ...newRowColumns(), userSub: session.userSub, role });
 }
 
 /**

@@ -17,12 +17,12 @@ vi.mock('@icasu/logger', async (importOriginal) => ({
 }));
 
 const { db } = await import('@icasu/db/client');
-const { users } = await import('@icasu/db/schema');
+const { usersTable } = await import('@icasu/db/schema');
 const { auditLog } = await import('@icasu/logger');
 
 beforeAll(() => migrateTestDb(db));
 beforeEach(() => vi.mocked(auditLog).mockClear());
-afterEach(() => db.delete(users));
+afterEach(() => db.delete(usersTable));
 
 const session = (userSub: string): SessionContext => ({
   sessionId: 's',
@@ -45,18 +45,20 @@ describe('auth middleware', () => {
     expect(res.status).toBe(200);
     expect(((await res.json()) as { role: string }).role).toBe('member');
 
-    const rows = await db.select().from(users);
+    const rows = await db.select().from(usersTable);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.userSub).toBe('sub-new');
   });
 
   it('resolves an existing user without creating a duplicate', async () => {
-    await db.insert(users).values({ ...newRowColumns(), userSub: 'sub-existing', role: 'admin' });
+    await db
+      .insert(usersTable)
+      .values({ ...newRowColumns(), userSub: 'sub-existing', role: 'admin' });
 
     const res = await probeApp('task:read', 'sub-existing').request('/probe');
 
     expect(res.status).toBe(200);
-    expect(await db.select().from(users)).toHaveLength(1);
+    expect(await db.select().from(usersTable)).toHaveLength(1);
   });
 
   it('allows a member (JIT default) through a task:read route', async () => {
@@ -91,7 +93,7 @@ describe('auth middleware', () => {
   it('records a user.provisioned audit event when the JIT row is created', async () => {
     await probeApp('task:read', 'sub-new').request('/probe');
 
-    const [user] = await db.select().from(users);
+    const [user] = await db.select().from(usersTable);
     expect(auditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'user.provisioned',
@@ -103,7 +105,7 @@ describe('auth middleware', () => {
   });
 
   it('does not record an audit event when an existing authorized user passes', async () => {
-    await db.insert(users).values({ ...newRowColumns(), userSub: 'sub-admin', role: 'admin' });
+    await db.insert(usersTable).values({ ...newRowColumns(), userSub: 'sub-admin', role: 'admin' });
 
     await probeApp('task:write', 'sub-admin').request('/probe');
 
@@ -111,7 +113,7 @@ describe('auth middleware', () => {
   });
 
   it('allows an admin through a task:write route', async () => {
-    await db.insert(users).values({ ...newRowColumns(), userSub: 'sub-admin', role: 'admin' });
+    await db.insert(usersTable).values({ ...newRowColumns(), userSub: 'sub-admin', role: 'admin' });
 
     const res = await probeApp('task:write', 'sub-admin').request('/probe');
 

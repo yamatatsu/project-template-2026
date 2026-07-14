@@ -6,8 +6,8 @@ import {
   type NewUser,
   taskPriorityValues,
   taskStatusValues,
-  tasks,
-  users,
+  tasksTable,
+  usersTable,
 } from './schema.ts';
 
 // ローカル動作確認用のシード。`pnpm db:seed`（ルート）/ `pnpm --filter @icasu/db db:seed` で流す。
@@ -63,9 +63,11 @@ async function upsertUsers(): Promise<[{ id: string }, { id: string }]> {
       updatedAt: now,
     },
   ];
-  await db.insert(users).values(rows).onConflictDoNothing();
+  await db.insert(usersTable).values(rows).onConflictDoNothing();
 
-  const found = await db.select({ id: users.id, userSub: users.userSub }).from(users);
+  const found = await db
+    .select({ id: usersTable.id, userSub: usersTable.userSub })
+    .from(usersTable);
   const bySub = new Map(found.map((row) => [row.userSub, row]));
   const member = bySub.get(MEMBER_SUB);
   const admin = bySub.get(ADMIN_SUB);
@@ -77,8 +79,8 @@ async function upsertUsers(): Promise<[{ id: string }, { id: string }]> {
 
 /** tasks を全削除して 101 件入れ直す（再実行で件数が増えないよう、まず空にする）。 */
 async function replaceTasks(creatorIds: string[]): Promise<void> {
-  await db.delete(tasks);
-  await db.insert(tasks).values(buildTasks(creatorIds));
+  await db.delete(tasksTable);
+  await db.insert(tasksTable).values(buildTasks(creatorIds));
 }
 
 // index からの循環選択。modulo で常に範囲内だが noUncheckedIndexedAccess 下では undefined 型が

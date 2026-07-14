@@ -18,11 +18,11 @@ export async function seedTask(
   db: Db,
   values: Partial<NewTask> & { title: string },
 ): Promise<Task> {
-  const { tasks } = await import('@icasu/db/schema');
+  const { tasksTable } = await import('@icasu/db/schema');
   // status / priority はアプリが値を決める方針で DB デフォルトが無いため seed でも埋める。
   // id / version / タイムスタンプは newRowColumns() で付与する（呼び出し側で上書き可）。
   const [row] = await db
-    .insert(tasks)
+    .insert(tasksTable)
     .values({
       ...newRowColumns(),
       status: 'todo',

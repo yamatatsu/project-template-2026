@@ -12,10 +12,10 @@ const client = testClient(
   withSession((await import('./tasks.$taskId.get.ts')).default, testSession()),
 );
 const { db } = await import('@icasu/db/client');
-const { tasks } = await import('@icasu/db/schema');
+const { tasksTable } = await import('@icasu/db/schema');
 
 beforeAll(() => migrateTestDb(db));
-afterEach(() => db.delete(tasks));
+afterEach(() => db.delete(tasksTable));
 
 describe('GET /tasks/:id', () => {
   it('returns the matching task for an existing id', async () => {

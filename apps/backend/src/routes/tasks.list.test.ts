@@ -10,10 +10,10 @@ vi.mock('@icasu/db/client', () =>
 
 const client = testClient(withSession((await import('./tasks.list.ts')).default, testSession()));
 const { db } = await import('@icasu/db/client');
-const { tasks } = await import('@icasu/db/schema');
+const { tasksTable } = await import('@icasu/db/schema');
 
 beforeAll(() => migrateTestDb(db));
-afterEach(() => db.delete(tasks));
+afterEach(() => db.delete(tasksTable));
 
 /** createdAt を 1 日ずつずらして count 件 seed する（順序とページ境界を決定的にする）。 */
 function seedTasksByDay(count: number) {

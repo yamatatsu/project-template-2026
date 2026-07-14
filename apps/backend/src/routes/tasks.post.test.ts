@@ -11,14 +11,14 @@ vi.mock('@icasu/db/client', () =>
 
 const client = testClient(withSession((await import('./tasks.post.ts')).default, testSession()));
 const { db } = await import('@icasu/db/client');
-const { tasks, users } = await import('@icasu/db/schema');
+const { tasksTable, usersTable } = await import('@icasu/db/schema');
 
 beforeAll(() => migrateTestDb(db));
 // POST は task:write（admin 限定）なので、session ユーザーを admin として用意する。
 beforeEach(() => seedSessionUser(db, 'admin'));
 afterEach(async () => {
-  await db.delete(tasks);
-  await db.delete(users);
+  await db.delete(tasksTable);
+  await db.delete(usersTable);
 });
 
 // リクエストボディの型は RPC の request 型から取り出す（transform 前の入力型）。テストのボディが
@@ -59,7 +59,10 @@ describe('POST /tasks', () => {
     const { json } = await createTask(validBody({ title: 'Owned task' }));
 
     // authZ が JIT プロビジョニングした users 行の id（session の userSub ではなく）。
-    const [user] = await db.select().from(users).where(eq(users.userSub, testSession().userSub));
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.userSub, testSession().userSub));
     expect(json.createdBy).toBe(user?.id);
   });
 

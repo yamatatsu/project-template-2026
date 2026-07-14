@@ -1,6 +1,6 @@
 import { zValidator } from '@hono/zod-validator';
 import { db } from '@icasu/db/client';
-import { tasks } from '@icasu/db/schema';
+import { tasksTable } from '@icasu/db/schema';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 
@@ -16,7 +16,7 @@ export default new Hono().get(
   async (c) => {
     const { id } = c.req.valid('param');
 
-    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
+    const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
     if (!task) {
       return c.json({ error: 'Task not found' }, 404);
     }

@@ -39,6 +39,9 @@ esbuild はこれをバンドル出力の位置基準のまま残すため、Lam
 Aurora DSQL は Postgres 互換だがドロップイン置き換えではない。ローカル Postgres では
 より緩い書き方でも動いてしまうため、**常に DSQL で通る形で書く**:
 
+- **テーブルオブジェクトの export は `Table` サフィックス**（`tasksTable` / `usersTable`）。行型
+  （`Task` / `NewTask`）やドメインエンティティ（`entities/task.ts` の `Task`）と衝突させず、値か型かを
+  名前で区別するため。`pgTable` の第 1 引数（SQL のテーブル名）は複数形のまま（`'tasks'`）。
 - **`pgEnum` は使わない**（`CREATE TYPE ... AS ENUM` 非対応）。`text` + `{ enum: [...] }` +
   `check()` で表現する。値配列（`taskStatusValues` 等）は列型と `check()` 制約を組むために
   `schema.ts` が持つ。**app 側の単一定義源は `apps/backend/src/entities/` で、こちらはその複製**

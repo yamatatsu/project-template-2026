@@ -13,14 +13,14 @@ const client = testClient(
   withSession((await import('./tasks.$taskId.put.ts')).default, testSession()),
 );
 const { db } = await import('@icasu/db/client');
-const { tasks, users } = await import('@icasu/db/schema');
+const { tasksTable, usersTable } = await import('@icasu/db/schema');
 
 beforeAll(() => migrateTestDb(db));
 // PUT は task:write（admin 限定）なので、session ユーザーを admin として用意する。
 beforeEach(() => seedSessionUser(db, 'admin'));
 afterEach(async () => {
-  await db.delete(tasks);
-  await db.delete(users);
+  await db.delete(tasksTable);
+  await db.delete(usersTable);
 });
 
 type TaskInput = InferRequestType<(typeof client.tasks)[':id']['$put']>['json'];
@@ -90,7 +90,7 @@ describe('PUT /tasks/:id', () => {
       id: created.id,
     });
 
-    const [row] = await db.select().from(tasks);
+    const [row] = await db.select().from(tasksTable);
     expect(row?.title).toBe('todo task');
     expect(row?.version).toBe(created.version);
   });
@@ -106,7 +106,7 @@ describe('PUT /tasks/:id', () => {
 
     expect(res.status).toBe(400);
     // 版が無いので更新されていない。
-    const [row] = await db.select().from(tasks);
+    const [row] = await db.select().from(tasksTable);
     expect(row?.title).toBe('todo task');
     expect(row?.version).toBe(created.version);
   });

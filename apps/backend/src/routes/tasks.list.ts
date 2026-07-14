@@ -1,6 +1,6 @@
 import { zValidator } from '@hono/zod-validator';
 import { db } from '@icasu/db/client';
-import { tasks } from '@icasu/db/schema';
+import { tasksTable } from '@icasu/db/schema';
 import { count, desc } from 'drizzle-orm';
 import { Hono } from 'hono';
 
@@ -30,16 +30,16 @@ export default new Hono().get(
 async function findManyTasks(
   page: number,
   pageSize: number,
-): Promise<{ rows: (typeof tasks.$inferSelect)[]; total: number }> {
+): Promise<{ rows: (typeof tasksTable.$inferSelect)[]; total: number }> {
   const [rows, [totalRow]] = await Promise.all([
     db
       .select()
-      .from(tasks)
+      .from(tasksTable)
       // createdAt は同値になり得る（一括投入など）ので id で全順序にし、ページ間の重複・欠落を防ぐ。
-      .orderBy(desc(tasks.createdAt), desc(tasks.id))
+      .orderBy(desc(tasksTable.createdAt), desc(tasksTable.id))
       .limit(pageSize)
       .offset((page - 1) * pageSize),
-    db.select({ total: count() }).from(tasks),
+    db.select({ total: count() }).from(tasksTable),
   ]);
   return {
     rows,

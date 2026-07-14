@@ -29,7 +29,7 @@ const versionColumn = () => integer('version').notNull();
 // そのため業務的な既定値（status='todo' 等）や version/監査タイムスタンプに `.default()` を付けず、
 // 制約（nullability・CHECK・unique）だけを DB に持たせる。id だけは surrogate key 生成の保険として
 // defaultRandom を残すが、insert 時はアプリも uuid を明示する（ゆくゆくのドメイン層へ寄せやすくする）。
-export const tasks = pgTable(
+export const tasksTable = pgTable(
   'tasks',
   {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -53,10 +53,10 @@ export const tasks = pgTable(
   ],
 );
 
-export type Task = typeof tasks.$inferSelect;
-export type NewTask = typeof tasks.$inferInsert;
+export type Task = typeof tasksTable.$inferSelect;
+export type NewTask = typeof tasksTable.$inferInsert;
 
-export const users = pgTable(
+export const usersTable = pgTable(
   'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -71,5 +71,5 @@ export const users = pgTable(
   (table) => [check('users_role_check', sql`${table.role} in (${literalList(userRoleValues)})`)],
 );
 
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
+export type User = typeof usersTable.$inferSelect;
+export type NewUser = typeof usersTable.$inferInsert;

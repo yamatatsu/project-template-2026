@@ -1,12 +1,12 @@
 import { db } from '@icasu/db/client';
-import { tasks } from '@icasu/db/schema';
+import { tasksTable } from '@icasu/db/schema';
 import { and, eq } from 'drizzle-orm';
 
 import type { Task } from '../entities/task.ts';
 import { INITIAL_VERSION, incrementVersion, type Persisted, toPersisted } from './shared/index.ts';
 
 export async function findTask(id: string): Promise<Persisted<Task> | null> {
-  const [existing] = await db.select().from(tasks).where(eq(tasks.id, id));
+  const [existing] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
   return existing ? toPersisted(existing) : null;
 }
 
@@ -14,7 +14,7 @@ export async function findTask(id: string): Promise<Persisted<Task> | null> {
 export async function addTask(task: Task): Promise<Persisted<Task>> {
   const now = new Date();
   const [created] = await db
-    .insert(tasks)
+    .insert(tasksTable)
     .values({
       ...task,
       version: INITIAL_VERSION,
@@ -42,15 +42,15 @@ export async function saveTask(
   const { id, createdBy: _createdBy, ...fields } = task;
   const now = new Date();
   const [saved] = await db
-    .update(tasks)
-    .set({ ...fields, updatedAt: now, version: incrementVersion(tasks) })
-    .where(and(eq(tasks.id, id), eq(tasks.version, expectedVersion)))
+    .update(tasksTable)
+    .set({ ...fields, updatedAt: now, version: incrementVersion(tasksTable) })
+    .where(and(eq(tasksTable.id, id), eq(tasksTable.version, expectedVersion)))
     .returning();
   return saved ? toPersisted(saved) : null;
 }
 
 /** task を 1 件取り除く。取り除けたら true、無ければ false（ルートが 404 に対応づける）。 */
 export async function removeTask(id: string): Promise<boolean> {
-  const [removed] = await db.delete(tasks).where(eq(tasks.id, id)).returning();
+  const [removed] = await db.delete(tasksTable).where(eq(tasksTable.id, id)).returning();
   return removed != null;
 }

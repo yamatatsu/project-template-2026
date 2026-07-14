@@ -19,7 +19,7 @@ const client = testClient(
   withSession((await import('./tasks.$taskId.delete.ts')).default, testSession()),
 );
 const { db } = await import('@icasu/db/client');
-const { tasks, users } = await import('@icasu/db/schema');
+const { tasksTable, usersTable } = await import('@icasu/db/schema');
 const { auditLog } = await import('@icasu/logger');
 
 beforeAll(() => migrateTestDb(db));
@@ -29,8 +29,8 @@ beforeEach(async () => {
   await seedSessionUser(db, 'admin');
 });
 afterEach(async () => {
-  await db.delete(tasks);
-  await db.delete(users);
+  await db.delete(tasksTable);
+  await db.delete(usersTable);
 });
 
 describe('DELETE /tasks/:id', () => {
@@ -42,7 +42,7 @@ describe('DELETE /tasks/:id', () => {
     expect(await res.json()).toEqual({ success: true });
 
     // 取得系ルートに依存せず、DB を直接見て消えていることを確認する。
-    const remaining = await db.select().from(tasks).where(eq(tasks.id, created.id));
+    const remaining = await db.select().from(tasksTable).where(eq(tasksTable.id, created.id));
     expect(remaining).toHaveLength(0);
   });
 
