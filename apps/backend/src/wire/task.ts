@@ -29,6 +29,11 @@ export const taskInputSchema = z.object({
     .transform((s) => (s == null ? null : new Date(s))),
 });
 
+// 楽観ロックの版を伴う入力（PUT）。内容の定義源は taskInputSchema 1 つに保ち、版だけを足して派生させる。
+export const conditionalTaskInputSchema = taskInputSchema.extend({
+  expectedVersion: z.number().int().positive(),
+});
+
 export const taskIdParamSchema = z.object({
   id: z.uuid(),
 });

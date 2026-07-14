@@ -72,14 +72,10 @@ export function TaskForm({ mode, task }: TaskFormProps) {
       if (mode !== 'edit') throw new Error('invalid mode');
       const res = await client.tasks[':id'].$put({
         param: { id: task.id },
-        // 楽観ロック: 編集開始時に読み込んだ版を strong entity-tag（`"<version>"`）として
-        // If-Match で送る。版はリソース内容でなく precondition なのでヘッダで運ぶ（サーバ側の
-        // 契約は apps/backend の楽観ロック節）。
-        header: { 'if-match': `"${task.meta.version}"` },
         json,
       });
-      // 412 = 版競合。他の変更に負けたので、最新を読み直して再編集するよう促す。
-      if (res.status === 412) {
+      // 409 = 版競合。他の変更に負けたので、最新を読み直して再編集するよう促す。
+      if (res.status === 409) {
         throw new Error('他の変更と競合しました。最新の状態を読み込み直してください。');
       }
       if (!res.ok) throw new Error('タスクの更新に失敗しました');
@@ -113,7 +109,8 @@ export function TaskForm({ mode, task }: TaskFormProps) {
         if (mode === 'create') {
           await createMutation.mutateAsync(payload);
         } else {
-          await updateMutation.mutateAsync(payload);
+          // 楽観ロック: 編集開始時に読み込んだ版を、編集の土台にした前提として送る。
+          await updateMutation.mutateAsync({ ...payload, expectedVersion: task.meta.version });
         }
       } catch (err) {
         setSubmitError(err instanceof Error ? err.message : '送信に失敗しました');

@@ -1,6 +1,6 @@
 ---
 name: backend-testing
-description: このモノレポ（project-template-2026）の `apps/backend`（Hono BFF）でテストを書く／直す／レビューするときの唯一の実装ガイド。ルート単体テストを PGlite（インメモリ Postgres）上で request→db→response で回し、`hono/testing` の `testClient` で型付き RPC として叩く方式・共通ヘルパ（`support.ts` / `seed.ts`）・session/認可の seed・並列性・落とし穴を集約する。以下のいずれかのとき必ず読むこと —— (1) `apps/backend` に新しいルートのテストを追加する／既存テストを直す・レビューする、(2) PGlite・`vi.mock('@icasu/db/client')`・`migrateTestDb`・`withSession`・`testSession`・`seedTask`・`seedSessionUser`・`testClient`・`InferRequestType` の使い方を知りたい、(3) テストで DB を差し替える／マイグレーションを当てる／session や role を用意する／楽観ロック（If-Match）や zValidator の 400/404/412/428 を検証する、(4) 「テストが並列で衝突しないのはなぜか」「negative test で型が通らない」等のテスト特有の疑問がある。バックエンドのテストに関わるならまずこのスキルを読む。
+description: このモノレポ（project-template-2026）の `apps/backend`（Hono BFF）でテストを書く／直す／レビューするときの唯一の実装ガイド。ルート単体テストを PGlite（インメモリ Postgres）上で request→db→response で回し、`hono/testing` の `testClient` で型付き RPC として叩く方式・共通ヘルパ（`support.ts` / `seed.ts`）・session/認可の seed・並列性・落とし穴を集約する。以下のいずれかのとき必ず読むこと —— (1) `apps/backend` に新しいルートのテストを追加する／既存テストを直す・レビューする、(2) PGlite・`vi.mock('@icasu/db/client')`・`migrateTestDb`・`withSession`・`testSession`・`seedTask`・`seedSessionUser`・`testClient`・`InferRequestType` の使い方を知りたい、(3) テストで DB を差し替える／マイグレーションを当てる／session や role を用意する／楽観ロック（body の `expectedVersion`）や zValidator の 400/404/409 を検証する、(4) 「テストが並列で衝突しないのはなぜか」「negative test で型が通らない」等のテスト特有の疑問がある。バックエンドのテストに関わるならまずこのスキルを読む。
 ---
 
 # apps/backend のテストの書き方
@@ -18,7 +18,7 @@ description: このモノレポ（project-template-2026）の `apps/backend`（H
 - **1 ルート 1 テストファイル**。ルート実装と同じフラット命名にする（`routes/tasks.$taskId.put.ts` →
   `routes/tasks.$taskId.put.test.ts`）。1 ファイルに集約しない（肥大化する）。
 - **リクエストは必ず `testClient` の型付き RPC で送る**（`app.request(url, …)` の手書きはしない）。
-  param/json/header が RPC の型で検証され、テストのボディがサーバ契約とずれれば**型で落ちる**。
+  param/json/query が RPC の型で検証され、テストのボディがサーバ契約とずれれば**型で落ちる**。
 - **契約違反を意図的に送る negative test だけ `as never` で型を外す**（下記）。それ以外で型を緩めない。
 
 ## 共通ヘルパ（どこに何があるか）
@@ -73,7 +73,7 @@ afterEach(() => db.delete(tasks)); // テスト間で行をクリア
 | `GET /tasks` | `client.tasks.$get()` |
 | `GET /tasks/:id` | `client.tasks[':id'].$get({ param: { id } })` |
 | `POST /tasks` | `client.tasks.$post({ json: body })` |
-| `PUT /tasks/:id` | `client.tasks[':id'].$put({ param: { id }, json: body, header: { 'if-match': '"1"' } })` |
+| `PUT /tasks/:id` | `client.tasks[':id'].$put({ param: { id }, json: { ...body, expectedVersion: 1 } })` |
 | `DELETE /tasks/:id` | `client.tasks[':id'].$delete({ param: { id } })` |
 
 - **`{ json }` を渡すと `content-type: application/json` が自動で付く**（手動ヘッダ不要）。
@@ -95,9 +95,24 @@ afterEach(() => db.delete(tasks)); // テスト間で行をクリア
   ```
 
   これは transform **前**の入力型なので `dueDate` は ISO 文字列を渡す（サーバが `Date` にパースする）。
-- **楽観ロックの版（`If-Match`）は typed な `header` フィールドで渡す**。`requireOptimisticLock()` の
-  `zValidator('header')` が RPC 型に載せているので **`header` は型で必須**になる。Hono がヘッダ名を
-  小文字化するのでキーは `'if-match'`、値は entity-tag（`` `"${version}"` ``）。
+- **楽観ロックの版は body の `expectedVersion`（number）で渡す**。PUT のスキーマ
+  （`conditionalTaskInputSchema`）が RPC 型に載せているので **`json.expectedVersion` は型で必須**になる。
+  **内容と版はヘルパを分ける**と、版を欠いたnegative test（400）がそのまま書ける:
+
+  ```ts
+  type TaskInput = InferRequestType<(typeof client.tasks)[':id']['$put']>['json'];
+  type TaskContent = Omit<TaskInput, 'expectedVersion'>;
+
+  const validContent = (overrides: Partial<TaskContent> = {}): TaskContent => ({ ...  });
+  const validBody = (expectedVersion: number, overrides: Partial<TaskContent> = {}): TaskInput => ({
+    ...validContent(overrides),
+    expectedVersion,
+  });
+  ```
+
+  版は 1 始まりの正の整数なので、**stale な版を試すときは `seedTask(db, { title, version: 2 })` のように
+  seed 側の版を上げてから 1 を送る**（`version: 1` の行に `expectedVersion: 0` を送っても、競合ではなく
+  スキーマ違反の 400 になる）。
 
 ## 認可（authZ）を通す
 
@@ -117,8 +132,8 @@ afterEach(() => db.delete(tasks)); // テスト間で行をクリア
 // 必須フィールド欠落 → zValidator の 400 を確かめる。
 await client.tasks.$post({ json: { title: 'only title' } as never });
 
-// If-Match 欠如 → 428 を確かめる。header は RPC 型で必須なので arg ごと型を外す。
-await client.tasks[':id'].$put({ param: { id }, json: validBody() } as never);
+// expectedVersion 欠落 → zValidator の 400 を確かめる（楽観ロックが必須であることの検証）。
+await client.tasks[':id'].$put({ param: { id }, json: validContent() as never });
 ```
 
 `空 title`（`validBody({ title: '   ' })`）のように**型は正しいが値が不正**なケースは `as never` 不要
@@ -131,7 +146,7 @@ await client.tasks[':id'].$put({ param: { id }, json: validBody() } as never);
 - **`Date` は ISO 文字列**で返る（`typeof meta.createdAt === 'string'`）。
 - **本文は `(await res.json()) as Record<string, unknown>` で受けて**個別フィールドを assert する。DB を
   直接見て確かめたいとき（削除済み・未更新など）は `db.select().from(...)` を使い、取得系ルートに依存しない。
-- 楽観ロック競合の 412 body は `{ error: 'Version conflict', entity: 'task', id }` のみ（現在版は返さない）。
+- 楽観ロック競合の 409 body は `{ error: 'Version conflict', entity: 'task', id }` のみ（現在版は返さない）。
 
 ## 並列性（安全に並列化される仕組み）
 
@@ -152,6 +167,6 @@ await client.tasks[':id'].$put({ param: { id }, json: validBody() } as never);
 ## リファレンス実装
 
 迷ったら既存テストを写経の起点にする。**`routes/tasks.$taskId.put.test.ts` が最も網羅的**
-（param + json + header、200/412/428/400/404、DB 直接検証、negative の `as never` を全部含む）。
+（param + json、200/400/404/409、DB 直接検証、negative の `as never` を全部含む）。
 read 系は `routes/tasks.list.test.ts` / `routes/tasks.$taskId.get.test.ts`、認可の seed は
 `routes/tasks.post.test.ts`、合成点の smoke test（未認証 401）は `src/app.test.ts` が参考になる。

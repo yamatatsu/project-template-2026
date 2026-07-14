@@ -4,26 +4,23 @@ import { Hono } from 'hono';
 import { audit } from '../audit.ts';
 import { applyUpdate } from '../entities/task.ts';
 import { auth } from '../middleware/auth.ts';
-import { requireOptimisticLock } from '../middleware/optimistic-lock.ts';
 import { findTask, saveTask } from '../repositories/task-db-repo.ts';
-import { taskIdParamSchema, taskInputSchema, toTaskResponse } from '../wire/task.ts';
+import { conditionalTaskInputSchema, taskIdParamSchema, toTaskResponse } from '../wire/task.ts';
 
 export default new Hono().put(
   '/tasks/:id',
   auth({ action: 'task:write' }),
   zValidator('param', taskIdParamSchema),
-  // 楽観ロック: クライアントが土台にした版を If-Match で要求する（詳細は middleware/optimistic-lock.ts）。
-  requireOptimisticLock(),
-  zValidator('json', taskInputSchema),
+  zValidator('json', conditionalTaskInputSchema),
   async (c) => {
     const { id } = c.req.valid('param');
-    const updates = c.req.valid('json');
-    const expectedVersion = c.req.valid('header')['if-match'];
+    // ワイヤはフラット、ドメインの Command は「意図（updates）と前提（expectedVersion）」に分かれる。
+    const { expectedVersion, ...updates } = c.req.valid('json');
     const now = new Date();
 
-    // 競合は稀なので、クライアントは 412 を受けたら対象 entity を再取得して再送信する（現在版は返さず
-    // entity 種別と id のみ）。If-Match 不一致なので 409 ではなく 412 Precondition Failed。
-    const conflict = () => c.json({ error: 'Version conflict', entity: 'task', id }, 412);
+    // 競合は稀なので、クライアントは 409 を受けたら対象 entity を再取得して再送信する（現在版は返さず
+    // entity 種別と id のみ）。
+    const conflict = () => c.json({ error: 'Version conflict', entity: 'task', id }, 409);
 
     const existing = await findTask(id);
     if (!existing) {

@@ -116,8 +116,9 @@ request の zod スキーマ（入力の門番）と response serializer ＋ `Ta
 ### リクエストボディを全フィールド必須にする理由
 
 optional を作らず「無いなら null」を明示させる（`description`/`dueDate` は「キー必須・値は null 可」）。
-フロントを甘やかさないのが第一の理由で、副産物として **POST/PUT が同じ `taskInputSchema` を共有できる**
-（版は body でなく `If-Match` で受けるため、両者の入力形は完全に一致する）。
+PUT は版（`expectedVersion`）も body で受けるので、入力形は POST と完全一致しない。内容部分の定義源は
+`taskInputSchema` 1 つに保ち、PUT 用の `conditionalTaskInputSchema` を `.extend` で派生させる
+（[楽観ロック](optimistic-lock.md)）。
 
 ### 境界でパースまで済ませる（parse, don't validate）
 
@@ -141,7 +142,8 @@ serializer 内で明示する**（入力境界の `.transform` による ISO→D
 ### スキーマ名を境界の語彙で付ける
 
 名詞始まりにする（`taskInputSchema`）。`create`/`update` はアプリ／コマンド層の語彙なので wire に
-持ち込まない。
+持ち込まない。版を伴う PUT の入力は `conditionalTaskInputSchema` —— 「条件付きリクエスト」は境界
+（HTTP）の概念なので、この規約を破らずに済む。
 
 ## 6. フロントへの公開面が `AppType` 一本である理由
 

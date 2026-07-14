@@ -120,12 +120,11 @@ describe('TaskForm (edit)', () => {
     await waitFor(() => expect(detailPut).toHaveBeenCalledTimes(1));
     const arg = detailPut.mock.calls[0]?.[0] as {
       param: { id: string };
-      header: Record<string, unknown>;
       json: Record<string, unknown>;
     };
     expect(arg.param).toEqual({ id: 'edit-1' });
-    // 楽観ロック: 読み込んだ版（meta.version=1）を strong entity-tag として If-Match で送る。
-    expect(arg.header).toEqual({ 'if-match': '"1"' });
+    // 楽観ロック: 読み込んだ版（meta.version=1）を body の expectedVersion で送る。
+    expect(arg.json.expectedVersion).toBe(1);
     expect(arg.json.title).toBe('更新後タイトル');
     expect(arg.json.status).toBe('in_progress');
     expect(arg.json.priority).toBe('high');

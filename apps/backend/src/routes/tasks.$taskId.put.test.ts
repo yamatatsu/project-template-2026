@@ -24,10 +24,11 @@ afterEach(async () => {
 });
 
 type TaskInput = InferRequestType<(typeof client.tasks)[':id']['$put']>['json'];
+type TaskContent = Omit<TaskInput, 'expectedVersion'>;
 
 // PUT は全フィールド必須（リソース全体の置換）。テストは全フィールドを持つボディを基準に、
-// 検証したい項目だけ上書きする。楽観ロックの版は body ではなく If-Match ヘッダで送る。
-const validBody = (overrides: Partial<TaskInput> = {}): TaskInput => ({
+// 検証したい項目だけ上書きする。
+const validContent = (overrides: Partial<TaskContent> = {}): TaskContent => ({
   title: 'new title',
   description: null,
   status: 'todo',
@@ -36,9 +37,11 @@ const validBody = (overrides: Partial<TaskInput> = {}): TaskInput => ({
   ...overrides,
 });
 
-// If-Match の entity-tag（"<version>"）に版を載せる。楽観ロックの版は header 検証で RPC の型に
-// 載るので、リクエストの header フィールドに渡す（Hono がヘッダ名を小文字化するのでキーは if-match）。
-const ifMatch = (version: number) => ({ 'if-match': `"${version}"` });
+// 楽観ロックの版は body の expectedVersion で送る（content とは別の関心なので引数を分ける）。
+const validBody = (expectedVersion: number, overrides: Partial<TaskContent> = {}): TaskInput => ({
+  ...validContent(overrides),
+  expectedVersion,
+});
 
 describe('PUT /tasks/:id', () => {
   it('replaces the whole resource and bumps the version', async () => {
@@ -52,8 +55,7 @@ describe('PUT /tasks/:id', () => {
     const res = await client.tasks[':id'].$put({
       param: { id: created.id },
       // 全体置換: description を送らない（null）ので既存値は消える。
-      json: validBody({ status: 'done' }),
-      header: ifMatch(created.version),
+      json: validBody(created.version, { status: 'done' }),
     });
 
     expect(res.status).toBe(200);
@@ -67,19 +69,21 @@ describe('PUT /tasks/:id', () => {
     // 楽観ロック: version が 1 進む（監査系は meta にまとまる）。
     const meta = updated.meta as Record<string, unknown>;
     expect(meta.version).toBe(created.version + 1);
+    // 版は precondition ではなくリクエスト固有の前提なので、レスポンスには現れない。
+    expect(updated.expectedVersion).toBeUndefined();
   });
 
-  it('returns 412 on a stale If-Match version and leaves the row untouched', async () => {
-    const created = await seedTask(db, { title: 'todo task' });
+  it('returns 409 on a stale expectedVersion and leaves the row untouched', async () => {
+    // 既に一度更新された行（version 2）を再現する。クライアントが持っている版は 1 で stale。
+    const created = await seedTask(db, { title: 'todo task', version: 2 });
 
     const res = await client.tasks[':id'].$put({
       param: { id: created.id },
-      json: validBody({ title: 'clobber' }),
-      header: ifMatch(created.version - 1),
+      json: validBody(created.version - 1, { title: 'clobber' }),
     });
 
-    // If-Match 不一致は precondition 失敗（412）。通知は「競合したこと・対象 entity」のみ。
-    expect(res.status).toBe(412);
+    // 版不一致はリソースの現在状態との衝突（409）。通知は「競合したこと・対象 entity」のみ。
+    expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: 'Version conflict',
       entity: 'task',
@@ -91,17 +95,17 @@ describe('PUT /tasks/:id', () => {
     expect(row?.version).toBe(created.version);
   });
 
-  it('returns 428 when If-Match is absent (optimistic lock required)', async () => {
+  it('rejects a body without expectedVersion with 400 (optimistic lock required)', async () => {
     const created = await seedTask(db, { title: 'todo task' });
 
-    // If-Match を送らない検証。header は RPC 型で必須なので、欠如を再現するため型を外して送る。
     const res = await client.tasks[':id'].$put({
       param: { id: created.id },
-      json: validBody({ title: 'clobber' }),
-    } as never);
+      // 版の欠如は型契約にも反する。zValidator の 400 を確かめるため json だけ型を外す。
+      json: validContent({ title: 'clobber' }) as never,
+    });
 
-    expect(res.status).toBe(428);
-    // precondition が無いので更新されていない。
+    expect(res.status).toBe(400);
+    // 版が無いので更新されていない。
     const [row] = await db.select().from(tasks);
     expect(row?.title).toBe('todo task');
     expect(row?.version).toBe(created.version);
@@ -113,8 +117,7 @@ describe('PUT /tasks/:id', () => {
     const res = await client.tasks[':id'].$put({
       param: { id: created.id },
       // 必須フィールド欠落は型契約にも反する。zValidator の 400 を確かめるため json だけ型を外す。
-      json: { title: 'only title' } as never,
-      header: ifMatch(created.version),
+      json: { title: 'only title', expectedVersion: created.version } as never,
     });
 
     expect(res.status).toBe(400);
@@ -123,8 +126,7 @@ describe('PUT /tasks/:id', () => {
   it('returns 404 when updating a non-existent uuid', async () => {
     const res = await client.tasks[':id'].$put({
       param: { id: '00000000-0000-0000-0000-000000000000' },
-      json: validBody(),
-      header: ifMatch(1),
+      json: validBody(1),
     });
 
     expect(res.status).toBe(404);
