@@ -15,10 +15,12 @@ export default new Hono().get(
   zValidator('param', taskIdParamSchema),
   async (c) => {
     const { id } = c.req.valid('param');
+
     const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
     if (!task) {
       return c.json({ error: 'Task not found' }, 404);
     }
+
     return c.json(rowToTaskResponse(task));
   },
 );

@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import type { Task, TaskPriority, TaskStatus } from '../entities/task.ts';
 import { taskPriorityValues, taskStatusValues } from '../entities/task.ts';
-import type { Persisted } from '../repositories/persisted.ts';
+import type { Persisted } from '../repositories/types.ts';
 
 // task がワイヤを越える形（入力＝request / 出力＝response）を 1 feature 1 ファイルにまとめる。設計方針は
 // apps/backend/CLAUDE.md「入力検証と値の所有」「読み取り系の方針」を参照。

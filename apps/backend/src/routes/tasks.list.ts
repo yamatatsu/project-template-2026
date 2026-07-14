@@ -16,7 +16,9 @@ export default new Hono().get(
   zValidator('query', taskListQuerySchema),
   async (c) => {
     const { page, pageSize } = c.req.valid('query');
+
     const { rows, total } = await findManyTasks(page, pageSize);
+
     const body: TaskListResponse = {
       items: rows.map(rowToTaskResponse),
       total,

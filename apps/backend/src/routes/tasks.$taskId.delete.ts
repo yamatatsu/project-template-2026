@@ -12,10 +12,12 @@ export default new Hono().delete(
   zValidator('param', taskIdParamSchema),
   async (c) => {
     const { id } = c.req.valid('param');
+
     const removed = await removeTask(id);
     if (!removed) {
       return c.json({ error: 'Task not found' }, 404);
     }
+
     audit(c, 'task.deleted', { target: { type: 'task', id } });
     return c.json({ success: true });
   },

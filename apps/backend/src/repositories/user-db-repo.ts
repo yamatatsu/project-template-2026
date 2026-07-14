@@ -3,7 +3,7 @@ import { users } from '@icasu/db/schema';
 import { eq } from 'drizzle-orm';
 
 import type { User } from '../entities/user.ts';
-import { INITIAL_VERSION, toPersisted } from './persisted.ts';
+import { INITIAL_VERSION, toPersisted } from './shared/index.ts';
 
 // 記録メタデータを読む導線が無い（/me も監査も id/role まで）ので、find は封筒を剥がして
 // ドメイン値だけ返す。必要になったら Persisted<User> を返す形に広げる。

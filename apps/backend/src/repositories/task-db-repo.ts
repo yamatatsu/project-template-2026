@@ -3,7 +3,7 @@ import { tasks } from '@icasu/db/schema';
 import { and, eq } from 'drizzle-orm';
 
 import type { Task } from '../entities/task.ts';
-import { INITIAL_VERSION, type Persisted, toPersisted } from './persisted.ts';
+import { INITIAL_VERSION, incrementVersion, type Persisted, toPersisted } from './shared/index.ts';
 
 export async function findTask(id: string): Promise<Persisted<Task> | null> {
   const [existing] = await db.select().from(tasks).where(eq(tasks.id, id));
@@ -32,7 +32,7 @@ export async function addTask(task: Task): Promise<Persisted<Task>> {
 /**
  * 次の状態を永続化する。楽観ロックは `WHERE version = expectedVersion` の CAS で掛ける —— クライアントが
  * 土台にした版と DB の現在版の一致を判定する唯一の点（負けたら null）。版は CAS を通った書き込みだけが
- * `+1` 進める。
+ * `incrementVersion` で進める。
  */
 export async function saveTask(
   task: Task,
@@ -40,13 +40,10 @@ export async function saveTask(
 ): Promise<Persisted<Task> | null> {
   // createdBy（作成者）は不変なので書き戻さない（万一上流で書き換わっていても永続化させない）。
   const { id, createdBy: _createdBy, ...fields } = task;
+  const now = new Date();
   const [saved] = await db
     .update(tasks)
-    .set({
-      ...fields,
-      updatedAt: new Date(),
-      version: expectedVersion + 1,
-    })
+    .set({ ...fields, updatedAt: now, version: incrementVersion(tasks) })
     .where(and(eq(tasks.id, id), eq(tasks.version, expectedVersion)))
     .returning();
   return saved ? toPersisted(saved) : null;
